@@ -1,0 +1,51 @@
+deployment_config:
+  autoscaling_config:
+    min_replicas: 1
+    initial_replicas: 1
+    max_replicas: 8
+    target_num_ongoing_requests_per_replica: 1.0
+    metrics_interval_s: 10.0
+    look_back_period_s: 30.0
+    smoothing_factor: 1.0
+    downscale_delay_s: 300.0
+    upscale_delay_s: 90.0
+  ray_actor_options:
+    num_cpus: 0.1    # for a model deployment, we have 3 actor created, 1 and 2 will cost 0.1 cpu, and the model infrence will cost 6(see the setting in the end of the file)
+model_config:
+  warmup: True
+  model_task: text-generation
+  model_id: Qwen/Qwen-7B-Chat
+  max_input_words: 800
+  initialization:
+    # s3_mirror_config:
+    #   bucket_uri: s3://large-dl-models-mirror/models--amazon--LightGPT/main-safetensors/
+    initializer:
+      type: SingleDevice
+      dtype: float16
+      from_pretrained_kwargs:
+        use_cache: true
+        trust_remote_code: true
+      # use_kernel: true   # for deepspped type only
+      # max_tokens: 1536   # for deepspped type only
+    # pipeline: defaulttransformers
+    pipeline: default
+  generation:
+    max_batch_size: 18
+    generate_kwargs:
+      do_sample: false
+      max_new_tokens: 512
+      min_new_tokens: 16
+      temperature: 0.7
+      repetition_penalty: 1.1
+      top_p: 0.8
+      top_k: 50
+    # prompt_format: "Below is an instruction that describes a task. Write a response that appropriately completes the request.\n### Instruction:\n{instruction}\n### Response:\n"
+    stopping_sequences: ["### Response:", "### End"]
+scaling_config:
+  num_workers: 1
+  num_gpus_per_worker: 1
+  num_cpus_per_worker: 0  # for infrence
+  # resources_per_worker:
+  #   accelerator_type_cpu: 0.01
+  ray_actor_options:
+    num_cpus: 0.1

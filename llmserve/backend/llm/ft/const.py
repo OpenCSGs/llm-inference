@@ -1,0 +1,1 @@
+CHECKPOINT_PATH = "./fintuned/"

@@ -1,0 +1,49 @@
+deployment_config:
+  autoscaling_config:
+    min_replicas: 1
+    initial_replicas: 1
+    max_replicas: 8
+    target_num_ongoing_requests_per_replica: 1.0
+    metrics_interval_s: 10.0
+    look_back_period_s: 30.0
+    smoothing_factor: 1.0
+    downscale_delay_s: 300.0
+    upscale_delay_s: 90.0
+  ray_actor_options:
+    num_cpus: 0.1 # for a model deployment, we have 3 actor created, 1 and 2 will cost 0.1 cpu, and the model infrence will cost 6(see the setting in the end of the file)
+model_config:
+  warmup: False
+  model_task: text-generation
+  model_id: opencsg/opencsg-CodeLlama-7b-v0.1
+  max_input_words: 800
+  initialization:
+    s3_mirror_config:
+      # bucket_uri: s3://large-dl-models-mirror/models--amazon--LightGPT/main-safetensors/
+      bucket_uri: /home/yons/models/opencsg-CodeLlama-7b-v0.1/
+    initializer:
+      type: TransformersPipeline
+      dtype: float16
+      from_pretrained_kwargs:
+        use_cache: true
+        trust_remote_code: true
+        device_map: auto
+      # use_kernel: true   # for deepspped type only
+      # max_tokens: 1536   # for deepspped type only
+    pipeline: defaulttransformers
+  generation:
+    max_batch_size: 18
+    generate_kwargs:
+      do_sample: false
+      top_k: 10
+      temperature: 0.1
+      top_p: 0.95
+      num_return_sequences: 1
+      max_length: 256
+    # prompt_format: "Below is an instruction that describes a task. Write a response that appropriately completes the request.\n### Instruction:\n{instruction}\n### Response:\n"
+    stopping_sequences: ["### Response:", "### End"]
+scaling_config:
+  num_workers: 1
+  num_gpus_per_worker: 1
+  num_cpus_per_worker: 1 # for inference
+  # resources_per_worker:
+    # accelerator_type_gpu: 1
