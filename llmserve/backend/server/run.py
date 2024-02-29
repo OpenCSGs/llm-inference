@@ -68,7 +68,8 @@ def llm_server(args: Union[str, LLMApp, List[Union[LLMApp, str]]]):
         deployment_config = deployment_config.copy()
         max_concurrent_queries = deployment_config.pop(
             "max_concurrent_queries", None
-        ) or user_config["model_config"]["generation"].get("max_batch_size", 1)
+        ) or user_config.get("model_config", {}).get("generation", {}).get("max_batch_size", 1)
+
         deployments[model.model_config.model_id] = LLMDeployment.options(
             name=_reverse_prefix(model.model_config.model_id),
             max_concurrent_queries=max_concurrent_queries,
