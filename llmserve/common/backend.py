@@ -9,6 +9,7 @@ from llmserve.common.constants import TIMEOUT
 from llmserve.backend.logger import get_logger
 # from llmserve.backend.server.utils import get_serve_port
 from ray.serve._private.constants import ( DEFAULT_HTTP_PORT )
+from llmserve.common.utils import _replace_prefix, _reverse_prefix
 
 
 class BackendError(RuntimeError):
@@ -108,7 +109,7 @@ class LLMServeBackend(Backend):
         return result
 
     def metadata(self, llm: str) -> Dict[str, Dict[str, Any]]:
-        url = self.backend_url + llm.replace("/", "--") + "/metadata"
+        url = self.backend_url + _reverse_prefix(llm) + "/metadata"
         response = requests.get(url, headers=self.header, timeout=TIMEOUT)
         try:
             result = response.json()
@@ -120,7 +121,7 @@ class LLMServeBackend(Backend):
         return result
 
     def completions(self, prompt: str, llm: str) -> Dict[str, Union[str, float, int]]:
-        url = self.backend_url + llm.replace("/", "--").replace(".", "_") + "/run/predict"
+        url = self.backend_url + _reverse_prefix(llm) + "/run/predict"
         response = requests.post(
             url,
             headers=self.header,
@@ -138,7 +139,7 @@ class LLMServeBackend(Backend):
     def batch_completions(
         self, prompts: List[str], llm: str
     ) -> List[Dict[str, Union[str, float, int]]]:
-        url = self.backend_url + llm.replace("/", "--").replace(".", "_") + "/run/predict"
+        url = self.backend_url + _reverse_prefix(llm) + "/run/predict"
         response = requests.post(
             url,
             headers=self.header,

@@ -13,6 +13,7 @@ import os
 from llmserve.backend.llm.ft import TransformersFT
 from llmserve.backend.logger import get_logger
 from ray.serve._private.constants import ( DEFAULT_HTTP_PORT )
+from llmserve.common.utils import _replace_prefix, _reverse_prefix
 
 # ray.init(address="auto")
 logger = get_logger(__name__)
@@ -69,7 +70,7 @@ def llm_server(args: Union[str, LLMApp, List[Union[LLMApp, str]]]):
             "max_concurrent_queries", None
         ) or user_config["model_config"]["generation"].get("max_batch_size", 1)
         deployments[model.model_config.model_id] = LLMDeployment.options(
-            name=model.model_config.model_id.replace("/", "--").replace(".", "_"),
+            name=_reverse_prefix(model.model_config.model_id),
             max_concurrent_queries=max_concurrent_queries,
             user_config=user_config,
             **deployment_config,
@@ -115,13 +116,13 @@ def llm_experimental(args: Union[str, LLMApp, List[Union[LLMApp, str]]]):
     ) or (user_config["model_config"]["generation"].get("max_batch_size", 1) if user_config["model_config"]["generation"] else 1)
     
     deployment = LLMDeployment.options(
-        name=model.model_config.model_id.replace("/", "--").replace(".", "_"),
+        name=_reverse_prefix(model.model_config.model_id),
         max_concurrent_queries=max_concurrent_queries,
         user_config=user_config,
         **deployment_config,
     ).bind()
     serve_conf = {
-        "name": model.model_config.model_id.replace("/", "--").replace(".", "_")
+        "name": _reverse_prefix(model.model_config.model_id)
     }
 
     return (ExperimentalDeployment.bind(deployment, model), serve_conf)
