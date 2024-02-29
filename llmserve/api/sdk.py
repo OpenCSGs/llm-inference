@@ -5,6 +5,7 @@ import yaml
 from ray.serve._private.constants import ( DEFAULT_HTTP_PORT )
 from ray.dashboard.modules.serve.sdk import ServeSubmissionClient
 from ray.serve.schema import ServeInstanceDetails
+from llmserve.common.utils import _replace_prefix, _reverse_prefix
 
 # Preformance issue if import llmserve.backend.server.config
 # The address may be defined by user when start ray, better if user can pass this.
@@ -102,7 +103,7 @@ def query(model: str, prompt: str, port: int = DEFAULT_HTTP_PORT, appname: Optio
         if not appname:
             appname = "default"
         if appname in serve_details.applications.keys():
-            if model.replace("/", "--").replace(".", "_") in serve_details.applications[appname].dict().get("deployments").keys():
+            if _reverse_prefix(model) in serve_details.applications[appname].dict().get("deployments").keys():
                 route_prefix = serve_details.applications[appname].dict().get("route_prefix")
             else:
                 raise Exception(f"No {model} deployed under application {appname}. Ensure specify reasonable application and model name.")
@@ -125,7 +126,7 @@ def batch_query(
         if not appname:
             appname = "default"
         if appname in serve_details.applications.keys():
-            if model.replace("/", "--").replace(".", "_") in serve_details.applications[appname].dict().get("deployments").keys():
+            if _reverse_prefix(model) in serve_details.applications[appname].dict().get("deployments").keys():
                 route_prefix = serve_details.applications[appname].dict().get("route_prefix")
             else:
                 raise Exception(f"No {model} deployed under application {appname}. Ensure specify reasonable application and model name.")
@@ -252,7 +253,6 @@ def list_serving(appname: Optional[List[str]]) -> Dict[str, Any]:
         app_status = ""
         deployment_status = {}
         serving_status = {}
-        #serve_name = app_name.replace("/", "--").replace(".", "_")
         if app in serve_details.applications.keys():
             apps = serve_details.applications[app].dict()
 

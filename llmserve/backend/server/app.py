@@ -43,6 +43,7 @@ from ray.dashboard.modules.serve.sdk import ServeSubmissionClient
 
 import llmserve.backend.server.config as CONFIG
 from llmserve.api import sdk
+from llmserve.common.utils import _replace_prefix, _reverse_prefix
 
 #logger = get_logger(__name__)
 logger = get_logger("ray.serve")
@@ -313,13 +314,6 @@ class LLMDeployment(LLMPredictor):
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}:{self.args.model_config.model_id}"
 
-
-def _replace_prefix(model: str) -> str:
-    return model.replace("--", "/")
-
-def _replace_MID(model: str) -> str:
-    return model.replace("/", "--").replace(".", "_")
-
 @serve.deployment(
     # TODO make this configurable in llmserve run
     autoscaling_config={
@@ -348,8 +342,8 @@ class RouterDeployment:
         # model = _replace_prefix(model)
         modelID = model
         for item in modelKeys:
-            logger.info(f"_replace_MID(item): {_replace_MID(item)}")
-            if _replace_MID(item) == model:
+            logger.info(f"_reverse_prefix(item): {_reverse_prefix(item)}")
+            if _reverse_prefix(item) == model:
                 modelID = item
                 logger.info(f"set modelID: {item}")
         logger.info(f"search model key {modelID}")
@@ -474,7 +468,7 @@ class ApiServer:
                 filtered_deployments = {}
                 deploy_time = apps.get("last_deployed_time_s")
                 name = apps.get("name")
-                model_id = name.replace("--", "/").replace("_", ".")
+                model_id = _replace_prefix(name)
                 for k,v in apps.get("deployments").items():
                     if "ExperimentalDeployment"  in k:
                         continue
@@ -517,7 +511,7 @@ class ApiServer:
         for model in mds:
             if model.model_config.model_id in self.model_configs.keys():
                 continue
-            name = model.model_config.model_id.replace("/", "--").replace(".", "_")
+            name = _reverse_prefix(model.model_config.model_id)
             user_config = model.dict()
             deployment_config = model.deployment_config.dict()
             deployment_config = deployment_config.copy()
@@ -566,13 +560,13 @@ class ApiServer:
         ) or (user_config["model_config"]["generation"].get("max_batch_size", 1) if user_config["model_config"]["generation"] else 1)
             
         deployment = LLMDeployment.options(
-                name=args.model_id.replace("/", "--").replace(".", "_"),
+                name=_reverse_prefix(args.model_id),
                 max_concurrent_queries=max_concurrent_queries,
                 user_config=user_config,
                 **deployment_config,
             ).bind()
 
-        serve_name = args.model_id.replace("/", "--").replace(".", "_")
+        serve_name = _reverse_prefix(args.model_id)
         serve_port = user_config["model_config"]["initialization"]["runtime_env"].get("serve_port", DEFAULT_HTTP_PORT)
         app = ExperimentalDeployment.bind(deployment, model)
         ray._private.usage.usage_lib.record_library_usage("llmserve")
@@ -594,7 +588,7 @@ class ApiServer:
             if newload_model == []:
                 return {"response": "No models to load, model already exist."}
             for model in newload_model:
-                serve_name = model.replace("/", "--").replace(".", "_")
+                serve_name = _reverse_prefix(model)
                 app = ExperimentalDeployment.bind(self.deployments.get(model), self.model_configs.get(model))
                 ray._private.usage.usage_lib.record_library_usage("llmserve")
                 serve.run(app, host=CONFIG.SERVE_RUN_HOST, name = serve_name, route_prefix = "/" + serve_name, _blocking = False)
@@ -607,7 +601,7 @@ class ApiServer:
     #        **ServeSubmissionClient(CONFIG.RAY_AGENT_ADDRESS).get_serve_details())
     #    serving_status = {}
     #    for model in models:
-    #        model_id = model.replace("/", "--").replace(".", "_")
+    #        model_id = _reverse_prefix(model)
     #        app_status = ""
     #        deployment_status = {}
     #        if model_id in serve_details.applications.keys():
@@ -636,7 +630,7 @@ class ApiServer:
             ray._private.usage.usage_lib.record_library_usage("llmserve")
             #deployment_config = model_config[key].deployment_config.dict()
             user_config = value.dict()
-            model_id = user_config["model_config"].get("model_id").replace("--", "/").replace("_", ".")
+            model_id = _replace_prefix(user_config["model_config"].get("model_id"))
             # TBD: To add revision to model_config, that's needed to be implemented for CLI (in YAML) and API together.
             # ... For now, that's "main" before implement this.
             model_revision = user_config["model_config"].get("model_revision", "main")
@@ -780,9 +774,7 @@ class ApiServer:
     @app.post("/update_serving")
     async def update_model(self, model: ModelConfig = Body(..., embed=True)) -> Dict[str, Any]:
         models = self.list_deployment_from_ray(True)
-        serve_conf = {
-            "name": model.model_id.replace("/", "--").replace(".", "_"),
-        }
+        serve_conf = {"name": _reverse_prefix(model.model_id)}
         for mod in models:
             if model.model_id != mod.get("id"):
                 continue
@@ -849,7 +841,7 @@ class ApiServer:
                 max_concurrent_queries = deployment_config.pop(
                     "max_concurrent_queries", None
                 ) or (user_config["model_config"]["generation"].get("max_batch_size", 1) if user_config["model_config"]["generation"] else 1)
-                name = md.model_config.model_id.replace("/", "--").replace(".", "_")
+                name = _reverse_prefix(md.model_config.model_id)
                 deployment = LLMDeployment.options(
                     name=name,
                     max_concurrent_queries=max_concurrent_queries,
