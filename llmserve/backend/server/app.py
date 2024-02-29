@@ -676,16 +676,14 @@ class ApiServer:
                     for k, v in apps.get("deployments").items():
                         deployment_status[k] = v.get("status").value
                         if k != "ExperimentalDeployment":
-                            model_name = v.get("name")
-                            # model_url[_replace_prefix(k)] = "http://" + CONFIG.SERVE_RUN_HOST + ":" + serve_port + "/" + model_name
-                            model_url[_replace_prefix(k)] = "/" + model_name
+                            model_id = v.get("deployment_config").get("user_config").get("model_config").get("model_id")
+                            model_url[model_id] = "/" + _reverse_prefix(model_id)
                 elif "RouterDeployment" in apps.get("deployments").keys():
                     for k, v in apps.get("deployments").items():
                         deployment_status[k] = v.get("status").value
                         if k != "RouterDeployment":
-                            model_name = v.get("name")
-                            # model_url[_replace_prefix(k)] = "http://" + CONFIG.SERVE_RUN_HOST + ":" + serve_port + route_prefix + "/" + model_name + "/run/predict"
-                            model_url[_replace_prefix(k)] = route_prefix + "/" + model_name + "/run/predict"
+                            model_id = v.get("deployment_config").get("user_config").get("model_config").get("model_id")
+                            model_url[model_id] = route_prefix + "/" + _reverse_prefix(model_id) + "/run/predict"
                 else:
                     # Neither ExperimentalDeployment nor RouterDeployment is included in {model}, not a llm-serve application, pass
                     pass
