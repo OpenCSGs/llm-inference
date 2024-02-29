@@ -267,16 +267,14 @@ def list_serving(appname: Optional[List[str]]) -> Dict[str, Any]:
                 for k, v in apps.get("deployments").items():
                     deployment_status[k] = v.get("status").value
                     if k != "ExperimentalDeployment":
-                        model_name = v.get("name")
-                        #No need to expose predict_url for experimental, only expose gradio URL
-                        #model_url["predict_url"] = "http://" + SERVE_RUN_HOST + ":" + serve_port + "/" + serve_name + "/run/predict"
-                        model_url[k] = "http://" + SERVE_RUN_HOST + ":" + serve_port + "/" + model_name
+                        model_id = v.get("deployment_config").get("user_config").get("model_config").get("model_id")
+                        model_url[model_id] = "http://" + SERVE_RUN_HOST + ":" + serve_port + "/" + _reverse_prefix(model_id)
             elif "RouterDeployment" in apps.get("deployments").keys():
                 for k, v in apps.get("deployments").items():
                     deployment_status[k] = v.get("status").value
                     if k != "RouterDeployment":
-                        model_name = v.get("name")
-                        model_url[k] = "http://" + SERVE_RUN_HOST + ":" + serve_port + route_prefix + "/" + model_name + "/run/predict"
+                        model_id = v.get("deployment_config").get("user_config").get("model_config").get("model_id")
+                        model_url[model_id] = "http://" + SERVE_RUN_HOST + ":" + serve_port + route_prefix + "/" + _reverse_prefix(model_id) + "/run/predict"
             else:
                 # Neither ExperimentalDeployment nor RouterDeployment is included in {model}, not a llm-serve application, pass
                 pass
