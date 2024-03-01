@@ -57,7 +57,7 @@ class DefaultTransformersPipeline(BasePipeline):
 
         self.pipeline = None
         self.preprocess = None
-        #self.postprocess = None
+        self.postprocess = None
 
     def _get_transformers_pipeline(self, **kwargs) -> TransformersPipeline:
         logger.info(f"DefaultTransformersPipeline.device: {self.device}")
