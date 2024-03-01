@@ -1,6 +1,7 @@
 from typing import TYPE_CHECKING, List, Optional, Union
 
 import torch
+import time
 from transformers import Pipeline as TransformersPipeline
 from transformers import PreTrainedModel, PreTrainedTokenizer, pipeline
 
@@ -8,7 +9,7 @@ from llmserve.backend.logger import get_logger
 from llmserve.backend.server.models import Prompt, Response
 
 from ._base import BasePipeline
-from .utils import construct_prompts, construct_prompts_experimental
+from .utils import construct_prompts_experimental, truncate_to_first_stop_token
 from llmserve.backend.server.utils import render_gradio_params
 from .default_pipeline import DefaultPipeline
 
@@ -80,14 +81,18 @@ class DefaultTransformersPipeline(BasePipeline):
         
         logger.info(f"input from pipeline: ****** {inputs}")
 
+        preprocess_st = time.monotonic()
         if self.preprocess:
             data = self.preprocess(inputs)
+        preprocess_time = time.monotonic() - preprocess_st
 
         kwargs.pop("stopping_sequences", None)
         kwargs.pop("timeout_s", None)
         kwargs.pop("start_timestamp", None)
         logger.info(f"input data: {data}")
         # special cases that needs to be handled differently
+
+        generation_st = time.monotonic()
         logger.info(f"self.pipeline.device: {self.pipeline.device}")
         if isinstance(
             self.pipeline,
@@ -112,10 +117,12 @@ class DefaultTransformersPipeline(BasePipeline):
             logger.info(f"Call {self.pipeline} : {data}")
             logger.info(f"Call {self.pipeline} : {kwargs}")
             data = self.pipeline(**data, **kwargs)
+        generation_time = time.monotonic() - generation_st
 
         logger.info(f"output data from pipeline: ****** {data}")
         if self.postprocess:
             output = self.postprocess(data)
+        output = self.format_output(data[0], inputs, preprocess_time, generation_time)
 
         return output
 
@@ -166,6 +173,32 @@ class DefaultTransformersPipeline(BasePipeline):
 
     def preprocess(self, prompts: List[str], **generate_kwargs):
         pass
+
+    def format_output(self, model_outputs, inputs, preprocess_time, generation_time, **generate_kwargs) -> List[Response]:
+        st = time.monotonic()
+        decoded: List[Response] = []
+        num_generated_tokens_batch = 0
+        num_input_tokens_batch = 0
+        for output in model_outputs:
+            num_generated_tokens = len(self.tokenizer(output["generated_text"]).input_ids)
+            num_input_tokens = len(self.tokenizer(inputs[0]).input_ids)
+            response = Response(
+                generated_text=output["generated_text"],
+                num_generated_tokens=num_generated_tokens,
+                num_input_tokens=num_input_tokens,
+            )
+            num_generated_tokens_batch += num_generated_tokens
+            num_input_tokens_batch += num_input_tokens
+            decoded.append(response)
+        et = time.monotonic() - st
+        for response in decoded:
+            response.num_generated_tokens_batch = num_generated_tokens_batch
+            response.num_input_tokens_batch = num_input_tokens_batch
+            response.preprocessing_time = preprocess_time
+            response.generation_time = generation_time
+            response.postprocessing_time = et
+
+        return decoded
 
     def forward(self, model_inputs, **generate_kwargs):
         pass
