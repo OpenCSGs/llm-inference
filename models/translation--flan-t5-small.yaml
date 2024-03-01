@@ -1,4 +1,5 @@
 deployment_config:
+  max_concurrent_queries: 1
   autoscaling_config:
     min_replicas: 1
     initial_replicas: 1
