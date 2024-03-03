@@ -1,2 +1,0 @@
-typer>=0.9
-rich
