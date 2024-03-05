@@ -1,5 +1,7 @@
 # LLM Inference - Quickly Deploy Productive LLM Service
 
+[中文文档](./README_cn.md)
+
 `LLM Inference` is a large language model serving solution for deploying productive LLM services.
 
 We gained a great deal of inspiration and motivation from [this open source project](https://github.com/ray-project/ray-llm). We are incredibly grateful to them for providing us with the chance to further explore and innovate by standing on the shoulders of giants.
