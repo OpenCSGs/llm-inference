@@ -104,9 +104,9 @@ ray stop
 
 关于详细的API Server和API的内容，请参见[此文档](./docs/api_server.md)。
 
-### 在裸金属上部署
+### 在裸机上部署
 
-请参见[此文档](./docs/deploy_on_bare_metal.md)中描述，查阅如何在裸金属上部署。
+请参见[此文档](./docs/deploy_on_bare_metal.md)中描述，查阅如何在裸机上部署。
 
 ### 在Kubernetes中部署
 
