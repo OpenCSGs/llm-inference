@@ -125,6 +125,10 @@ See the [guide](./docs/git_server_s3_storage.md) for how to use model from local
 LLMServe allows you to easily add new models by adding a single configuration file.
 To learn more about how to customize or add new models, see the [LLMServe Model Registry](./models/README.md).
 
+### Developer Guide
+
+See the [Developer Guide](./docs/developer.md) for how to setup a development environment so you can get started contributing.
+
 ### Common Issues
 
 See the [document](./docs/common_issues.md) for some common issues.

@@ -122,6 +122,10 @@ ray stop
 
 LLMServe允许您通过添加单个配置文件轻松添加新模型。 以了解有关如何自定义或添加新模型的更多信息，请参阅[此文档](./models/README.md)。
 
+### 开发者指南
+
+在贡献之前，请参阅[开发者指南](./docs/developer.md).
+
 ### 常见问题
 
 更多问题，请参阅[此文档](./docs/common_issues.md)。
