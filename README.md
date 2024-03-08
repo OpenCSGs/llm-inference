@@ -28,7 +28,7 @@ More features in [Roadmap](./Roadmap.md) are coming soon.
 You can start by cloning the repository and pip install `llm-serve`. It is recommended to deploy `llm-serve` with Python 3.10+.
 
 ```
-git clone https://git-devops.opencsg.com/product/starnet/llm-inference.git
+git clone https://github.com/OpenCSGs/llm-inference.git
 cd llm-inference
 pip install .
 ```
