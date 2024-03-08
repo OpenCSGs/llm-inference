@@ -26,7 +26,7 @@
 您可以下载此项目代码，然后使用pip install ' llm-serve '安装。建议使用Python 3.10+部署'llm-serve '。
 
 ```
-git clone https://git-devops.opencsg.com/product/starnet/llm-inference.git
+git clone https://github.com/OpenCSGs/llm-inference.git
 cd llm-inference
 pip install .
 ```
