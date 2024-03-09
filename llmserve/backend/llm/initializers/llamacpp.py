@@ -75,7 +75,8 @@ class LlamaCppInitializer(LLMInitializer):
         }
 
     def load_model(self, model_id: str) -> "Llama":
-        logger.info(f"LlamaCppInitializer downloading {model_id} : {self.model_filename}")
+        logger.info(
+            f"LlamaCppInitializer downloading {model_id} : {self.model_filename}")
         model_path = hf_hub_download(model_id, self.model_filename)
         logger.info(f"LlamaCppInitializer Loading model {model_path}")
         # Lazy import to avoid issues on CPU head node

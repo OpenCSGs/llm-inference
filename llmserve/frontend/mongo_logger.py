@@ -44,7 +44,8 @@ class MongoLogger(FlaggingCallback):
         else:
             # The collection doesn't exist, so create it
             self.db.create_collection(COLLECTION_NAME)
-            print(f"Collection '{COLLECTION_NAME}' created in database '{DB_NAME}'.")
+            print(
+                f"Collection '{COLLECTION_NAME}' created in database '{DB_NAME}'.")
 
     def flag(self, flag_data: list[Any], flag_option: str = "", username: str = ""):
         print(f"last value is: {flag_data}")

@@ -96,13 +96,15 @@ class DeepSpeedInitializer(TransformersInitializer):
             repo_root = checkpoint_path
 
         if os.path.exists(os.path.join(repo_root, "ds_inference_config.json")):
-            checkpoints_json = os.path.join(repo_root, "ds_inference_config.json")
+            checkpoints_json = os.path.join(
+                repo_root, "ds_inference_config.json")
         elif model_id in [
             "microsoft/bloom-deepspeed-inference-int8",
             "microsoft/bloom-deepspeed-inference-fp16",
         ]:
             # tp presharded repos come with their own checkpoints config file
-            checkpoints_json = os.path.join(repo_root, "ds_inference_config.json")
+            checkpoints_json = os.path.join(
+                repo_root, "ds_inference_config.json")
         else:
             checkpoints_json = os.path.join(repo_root, "checkpoints.json")
 
@@ -112,7 +114,8 @@ class DeepSpeedInitializer(TransformersInitializer):
                     for entry in Path(repo_root).rglob("*.[bp][it][n]")
                     if entry.is_file()
                 ]
-                data = {"type": "BLOOM", "checkpoints": file_list, "version": 1.0}
+                data = {"type": "BLOOM",
+                        "checkpoints": file_list, "version": 1.0}
                 json.dump(data, f)
 
         return os.path.abspath(repo_root), os.path.abspath(checkpoints_json)

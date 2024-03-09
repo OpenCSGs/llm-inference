@@ -51,7 +51,7 @@ class DefaultTransformersPipeline(BasePipeline):
     ) -> None:
         if not hasattr(model, "generate"):
             raise ValueError("Model must have a generate method.")
-        
+
         logger.info(f"DefaultTransformersPipeline.init.device: {device}")
         super().__init__(model, tokenizer, prompt_format, device)
 
@@ -77,8 +77,9 @@ class DefaultTransformersPipeline(BasePipeline):
             self.pipeline = self._get_transformers_pipeline()
 
         logger.info(f"input from pipeline: ****** {inputs}")
-        inputs = construct_prompts_experimental(inputs, prompt_format=self.prompt_format)
-        
+        inputs = construct_prompts_experimental(
+            inputs, prompt_format=self.prompt_format)
+
         logger.info(f"input from pipeline: ****** {inputs}")
 
         preprocess_st = time.monotonic()
@@ -102,8 +103,10 @@ class DefaultTransformersPipeline(BasePipeline):
                 pipelines.text2text_generation.TranslationPipeline,
             ),
         ):
-            logger.info(f"TextClassificationPipeline|Text2TextGenerationPipeline|TranslationPipeline : {data}")
-            logger.info(f"TextClassificationPipeline|Text2TextGenerationPipeline|TranslationPipeline : {kwargs}")
+            logger.info(
+                f"TextClassificationPipeline|Text2TextGenerationPipeline|TranslationPipeline : {data}")
+            logger.info(
+                f"TextClassificationPipeline|Text2TextGenerationPipeline|TranslationPipeline : {kwargs}")
             data = self.pipeline(*data, **kwargs)
         # elif isinstance(
         #     self.pipeline,
@@ -122,7 +125,8 @@ class DefaultTransformersPipeline(BasePipeline):
         logger.info(f"output data from pipeline: ****** {data}")
         if self.postprocess:
             output = self.postprocess(data)
-        output = self.format_output(data[0], inputs, preprocess_time, generation_time)
+        output = self.format_output(
+            data[0], inputs, preprocess_time, generation_time)
 
         return output
 
@@ -137,7 +141,8 @@ class DefaultTransformersPipeline(BasePipeline):
         stopping_sequences: List[Union[int, str]] = None,
         **kwargs,
     ) -> "DefaultTransformersPipeline":
-        logger.info(f"DefaultTransformersPipeline.from_initializer on device {device} for {model_id}")
+        logger.info(
+            f"DefaultTransformersPipeline.from_initializer on device {device} for {model_id}")
         model_from_pretrained_kwargs = initializer.get_model_from_pretrained_kwargs()
         default_kwargs = dict(
             model=model_id,
@@ -146,7 +151,8 @@ class DefaultTransformersPipeline(BasePipeline):
             **model_from_pretrained_kwargs
         )
         model_kwargs = initializer.get_model_init_kwargs()
-        logger.info(f"DefaultTransformersPipeline default_kwargs {default_kwargs}")
+        logger.info(
+            f"DefaultTransformersPipeline default_kwargs {default_kwargs}")
         logger.info(f"DefaultTransformersPipeline model_kwargs {model_kwargs}")
         transformers_pipe = pipeline(
             **default_kwargs,
@@ -163,7 +169,8 @@ class DefaultTransformersPipeline(BasePipeline):
         )
         pipe.pipeline = transformers_pipe
         transformers_pipe.device = pipe.device
-        logger.info(f"pipe.device: {pipe.device}, transformers_pipe.device: {transformers_pipe.device}")
+        logger.info(
+            f"pipe.device: {pipe.device}, transformers_pipe.device: {transformers_pipe.device}")
         if "task" in kwargs:
             pipeline_info = render_gradio_params(kwargs["task"])
             pipe.preprocess = pipeline_info["preprocess"]
@@ -180,7 +187,8 @@ class DefaultTransformersPipeline(BasePipeline):
         num_generated_tokens_batch = 0
         num_input_tokens_batch = 0
         for output in model_outputs:
-            num_generated_tokens = len(self.tokenizer(output["generated_text"]).input_ids)
+            num_generated_tokens = len(self.tokenizer(
+                output["generated_text"]).input_ids)
             num_input_tokens = len(self.tokenizer(inputs[0]).input_ids)
             response = Response(
                 generated_text=output["generated_text"],

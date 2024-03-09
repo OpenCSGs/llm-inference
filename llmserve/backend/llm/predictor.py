@@ -46,7 +46,8 @@ def init_model(
         local_rank (int): Local rank of the current GPU.
         max_batch_size (Optional[int], optional): Maximum batch size. Defaults to None.
     """
-    logger.info(f"Initializing model {llm_config.model_id} with local_rank: {local_rank}")
+    logger.info(
+        f"Initializing model {llm_config.model_id} with local_rank: {local_rank}")
     # os.environ['CUDA_VISIBLE_DEVICES'] = "0,1"
     # Lazy import so that the new cache location is used
     torch.backends.cuda.matmul.allow_tf32 = True
@@ -55,7 +56,7 @@ def init_model(
         device = torch.device("cuda")
     else:
         device = torch.device("cpu")
-    
+
     initializer_name = llm_config.initialization.initializer
     if not isinstance(initializer_name, str):
         initializer_name = initializer_name.type
@@ -66,16 +67,17 @@ def init_model(
         world_size=world_size,
         **llm_config.initialization.initializer.get_initializer_kwargs(),
     )
-    
+
     pipeline_name = llm_config.initialization.pipeline
-    additional_kwargs = dict (
-        task = llm_config.model_task,
+    additional_kwargs = dict(
+        task=llm_config.model_task,
     )
     logger.info(f"Pipeline name is {pipeline_name} on device {device}")
     pipeline = get_pipeline_cls_by_name(pipeline_name).from_initializer(
         initializer,
         llm_config.actual_hf_model_id,
-        prompt_format=(llm_config.generation.prompt_format if llm_config.generation else None),
+        prompt_format=(
+            llm_config.generation.prompt_format if llm_config.generation else None),
         device=device,
         **additional_kwargs
     )
@@ -93,7 +95,8 @@ def init_model(
     warmup_inputs = model_task_info["warmup"] if "warmup" in model_task_info else None
     # prompt = WARMUP_PROMPT
     # prompt = " ".join(prompt)
-    logger.info(f"Model {llm_config.model_id} is warming up, input is {warmup_inputs}...")
+    logger.info(
+        f"Model {llm_config.model_id} is warming up, input is {warmup_inputs}...")
     if llm_config.generation:
         generate_kwargs = llm_config.generation.all_generate_kwargs.copy()
         if "max_new_tokens" in generate_kwargs:
@@ -125,9 +128,11 @@ def init_model(
             warmup_success = True
         except torch.cuda.OutOfMemoryError:
             batch_size -= 2
-            logger.warning(f"Warmup failed due to CUDA OOM, reducing batch size to {batch_size}")
+            logger.warning(
+                f"Warmup failed due to CUDA OOM, reducing batch size to {batch_size}")
 
-    logger.info(f"Model {llm_config.model_id} succesfully initialized, final batch size {batch_size}!")
+    logger.info(
+        f"Model {llm_config.model_id} succesfully initialized, final batch size {batch_size}!")
 
     gc.collect()
 
@@ -185,7 +190,8 @@ class PredictionWorker(TorchDistributedWorker):
         # Recreate the logger to make sure it takes precedence over
         # other logger configurations.
         get_logger(__name__, force=True)
-        logger.info(f"num_gpus_per_worker: {num_gpus_per_worker}, num_cpus_per_worker: {num_cpus_per_worker}")
+        logger.info(
+            f"num_gpus_per_worker: {num_gpus_per_worker}, num_cpus_per_worker: {num_cpus_per_worker}")
         os.environ["OMP_NUM_THREADS"] = str(int(num_cpus_per_worker))
         # if num_gpus_per_worker > 0:
         #     gpu_ids = ""
@@ -194,14 +200,15 @@ class PredictionWorker(TorchDistributedWorker):
         #     gpu_ids = gpu_ids[1:]
         #     logger.info(f"set CUDA_VISIBLE_DEVICES '{gpu_ids}'")
         #     os.environ['CUDA_VISIBLE_DEVICES'] = gpu_ids
-            # os.environ['CUDA_VISIBLE_DEVICES'] = "0,1"
-            
+        # os.environ['CUDA_VISIBLE_DEVICES'] = "0,1"
+
         logger.info("Prediction Worker calling init model")
         self.generator = init_model(
             self.llm_config,
             self.world_size,
             local_rank,
-            max_batch_size=(self.llm_config.generation.max_batch_size if self.llm_config.generation else None),
+            max_batch_size=(
+                self.llm_config.generation.max_batch_size if self.llm_config.generation else None),
         )
 
     def generate(
@@ -225,7 +232,8 @@ class PredictionWorker(TorchDistributedWorker):
             oom_retry (bool, optional): Whether to retry if CUDA OOM occurs.
         """
         try:
-            logger.info(f"Prediction Worker generate text from prompts with kwargs: {kwargs}")
+            logger.info(
+                f"Prediction Worker generate text from prompts with kwargs: {kwargs}")
             return generate(
                 data,
                 self.generator,
@@ -241,7 +249,7 @@ class PredictionWorker(TorchDistributedWorker):
                     "[FIXME] Prediction failed due to CUDA OOM, trying again...\n"
                     f"{traceback.format_exc()}"
                 )
-                data_1, data_2 = data[: len(data) // 2], data[len(data) // 2 :]
+                data_1, data_2 = data[: len(data) // 2], data[len(data) // 2:]
                 responses_1 = generate(
                     data_1,
                     self.generator,
@@ -295,7 +303,8 @@ class LLMPredictor:
                 scaling_config, pg_timeout_s=pg_timeout_s
             )
             async with self._base_worker_group_lock:
-                logger.info(f"Rolling over to new worker group {self.new_worker_group}")
+                logger.info(
+                    f"Rolling over to new worker group {self.new_worker_group}")
                 self.base_worker_group = self.new_worker_group
                 self.new_worker_group = None
             gc.collect()
@@ -312,7 +321,7 @@ class LLMPredictor:
         logger.info("LLM Predictor creating a new worker group")
         gc.collect()
 
-        config: Args = self.args
+        config: Args = self.args  # pylint:disable=no-member
         llm_config = config.model_config
 
         # Start a placement group for the workers.
@@ -327,7 +336,7 @@ class LLMPredictor:
         )
         runtime_env = llm_config.initialization.runtime_env or {}
         logger.info("Build Prediction Worker")
-        prediction_worker_cls = PredictionWorker.options(
+        prediction_worker_cls = PredictionWorker.options(  # pylint:disable=no-member
             **scaling_options, runtime_env=runtime_env
         )
         initialize_node_remote_pg = initialize_node_remote.options(
@@ -352,7 +361,8 @@ class LLMPredictor:
         # Create the prediction workers.
         logger.info("Creating prediction workers...")
         worker_group = [
-            prediction_worker_cls.remote(llm_config, scaling_config.num_workers)
+            prediction_worker_cls.remote(
+                llm_config, scaling_config.num_workers)
             for i in range(scaling_config.num_workers)
         ]
 
@@ -364,7 +374,8 @@ class LLMPredictor:
         )
 
         # Initialize model on each worker.
-        logger.info(f"Initializing model on workers with local_ranks: {local_ranks}")
+        logger.info(
+            f"Initializing model on workers with local_ranks: {local_ranks}")
         await asyncio.gather(
             *[
                 worker.init_model.remote(
@@ -407,7 +418,7 @@ class LLMPredictor:
                             prompts,
                             timeout_s=timeout_s,
                             start_timestamp=start_timestamp,
-                            **self.args.model_config.generation.all_generate_kwargs if self.args.model_config.generation else {},
+                            **self.args.model_config.generation.all_generate_kwargs if self.args.model_config.generation else {},  # pylint:disable=no-member
                         )
                         for worker in self.base_worker_group
                     ]

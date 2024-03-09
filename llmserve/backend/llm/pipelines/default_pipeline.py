@@ -41,7 +41,8 @@ class DefaultPipeline(BasePipeline):
 
     def preprocess(self, prompts: List[str], **generate_kwargs):
         st = time.monotonic()
-        prompt_text = construct_prompts(prompts, prompt_format=self.prompt_format)
+        prompt_text = construct_prompts(
+            prompts, prompt_format=self.prompt_format)
         instruction_text = construct_prompts(prompts, prompt_format="")
 
         if generate_kwargs.get("add_special_tokens", False):
@@ -53,7 +54,7 @@ class DefaultPipeline(BasePipeline):
 
         if self.tokenizer.pad_token is None:
             self.tokenizer.pad_token = self.tokenizer.eos_token
-        
+
         inputs = self.tokenizer(
             prompt_text, return_tensors="pt", padding=True
         ).to(self.model.device)
@@ -73,7 +74,8 @@ class DefaultPipeline(BasePipeline):
         instruction_text = model_inputs["instruction_text"]
         prompt_text = model_inputs["prompt_text"]
         preprocessing_time = model_inputs["preprocessing_time"]
-        logger.info(f"Call model.generate with generate_kwargs: {generate_kwargs}")
+        logger.info(
+            f"Call model.generate with generate_kwargs: {generate_kwargs}")
         generated_sequence = self.model.generate(
             **{
                 **inputs,
@@ -110,7 +112,7 @@ class DefaultPipeline(BasePipeline):
             logger.info(
                 f"Unprocessed generated tokens: '{self.tokenizer.decode(token_unwrapped, skip_special_tokens=False).encode('unicode_escape').decode('utf-8')}'"
             )
-            tokens = token_unwrapped[len(inputs_unwrapped) :]
+            tokens = token_unwrapped[len(inputs_unwrapped):]
             if token_stopper:
                 tokens = truncate_to_first_stop_token(
                     tokens, token_stopper.stopping_sequences

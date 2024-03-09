@@ -39,93 +39,114 @@ def download_model(
     to the commit on Hugging Face Hub.
     """
     from transformers.utils.hub import TRANSFORMERS_CACHE
-    
+
     isAutoLoadConfigSuccess = False
     modelConfig = None
     try:
-        modelConfig = AutoConfig.from_pretrained(model_id, trust_remote_code=True)
+        modelConfig = AutoConfig.from_pretrained(
+            model_id, trust_remote_code=True)
         isAutoLoadConfigSuccess = True
     except Exception:
         isAutoLoadConfigSuccess = False
-    
+
     if modelConfig and isAutoLoadConfigSuccess:
-        logger.info(f"Model exist and success to load AutoConfig from_pretrained '{model_id}'")
+        logger.info(
+            f"Model exist and success to load AutoConfig from_pretrained '{model_id}'")
         return
     else:
         logger.info(f"Fail to load AutoConfig from_pretrained '{model_id}'")
-    
+
     isS3 = False
     isLocal = False
     isGit = False
     git_temp_dir = "/tmp"
-    
+
     if bucket_uri:
         if bucket_uri.startswith('s3://'):
             isS3 = True
         else:
             isLocal = True
-        logger.info(f"Downloading '{model_id}' from '{bucket_uri}' to '{TRANSFORMERS_CACHE}'")
+        logger.info(
+            f"Downloading '{model_id}' from '{bucket_uri}' to '{TRANSFORMERS_CACHE}'")
     elif git_uri:
         isGit = True
-        logger.info(f"Downloading '{model_id}' from '{git_uri}' to '{TRANSFORMERS_CACHE}'")
-    
-    path = os.path.expanduser(os.path.join(TRANSFORMERS_CACHE, f"models--{model_id.replace('/', '--')}"))
+        logger.info(
+            f"Downloading '{model_id}' from '{git_uri}' to '{TRANSFORMERS_CACHE}'")
+
+    path = os.path.expanduser(os.path.join(
+        TRANSFORMERS_CACHE, f"models--{model_id.replace('/', '--')}"))
     s3_sync_args = s3_sync_args or []
     if isS3:
         model_hash_file = os.path.join(bucket_uri, "hash")
         if endpoint_url:
-            logger.info(f"Downloading '{model_id}' hash from server '{endpoint_url}' '{model_hash_file}' ")
-            subprocess.run(["aws", "--endpoint-url", endpoint_url, "s3", "cp", "--quiet"] + s3_sync_args + [model_hash_file, "."])
+            logger.info(
+                f"Downloading '{model_id}' hash from server '{endpoint_url}' '{model_hash_file}' ")
+            subprocess.run(["aws", "--endpoint-url", endpoint_url, "s3",
+                           "cp", "--quiet"] + s3_sync_args + [model_hash_file, "."])
         else:
-            logger.info(f"Downloading '{model_id}' hash from '{model_hash_file}' ")
-            subprocess.run(["aws", "s3", "cp", "--quiet"] + s3_sync_args + [model_hash_file, "."])
+            logger.info(
+                f"Downloading '{model_id}' hash from '{model_hash_file}' ")
+            subprocess.run(["aws", "s3", "cp", "--quiet"] +
+                           s3_sync_args + [model_hash_file, "."])
     elif isLocal:
         model_hash_file = os.path.join(bucket_uri, "hash")
         logger.info(f"Downloading '{model_id}' hash from '{model_hash_file}' ")
         subprocess.run(["cp -rf " + model_hash_file + " ."], shell=True)
     elif isGit:
         model_tmp_dir = os.path.join(git_temp_dir, model_id)
-        logger.info(f"Downloading '{model_id}' from '{git_uri}' to '{model_tmp_dir}'")
-        subprocess.run(["git clone " + git_uri + " " + model_tmp_dir], shell=True)
-        subprocess.run(["git --git-dir=" + model_tmp_dir + "/.git log  -1 --pretty=format:%H > ./hash"], shell=True)
-    
+        logger.info(
+            f"Downloading '{model_id}' from '{git_uri}' to '{model_tmp_dir}'")
+        subprocess.run(["git clone " + git_uri + " " +
+                       model_tmp_dir], shell=True)
+        subprocess.run(["git --git-dir=" + model_tmp_dir +
+                       "/.git log  -1 --pretty=format:%H > ./hash"], shell=True)
+
     if not os.path.exists(os.path.join(".", "hash")):
-        raise RuntimeError("Hash file not found in the bucket or bucket could not have been downloaded.")
-    
+        raise RuntimeError(
+            "Hash file not found in the bucket or bucket could not have been downloaded.")
+
     with open(os.path.join(".", "hash"), "r") as f:
         f_hash = f.read().strip()
-    
+
     model_cache_path = os.path.join(path, "snapshots", f_hash)
-    
+
     model_config_file = os.path.join(model_cache_path, "config.json")
     if os.path.exists(model_config_file):
-        logger.info(f"Skip download model '{model_id}' due to config '{model_config_file}' exist")
+        logger.info(
+            f"Skip download model '{model_id}' due to config '{model_config_file}' exist")
         return
-    
+
     subprocess.run(["mkdir", "-p", model_cache_path])
     subprocess.run(["mkdir", "-p", os.path.join(path, "refs")])
-    
+
     if isS3 or isLocal:
-        logger.info(f"Downloading '{model_id}' files from '{bucket_uri}' to '{model_cache_path}'")
+        logger.info(
+            f"Downloading '{model_id}' files from '{bucket_uri}' to '{model_cache_path}'")
     elif isGit:
-        logger.info(f"Downloading '{model_id}' files from '{model_tmp_dir}' to '{model_cache_path}'")
-    
+        logger.info(
+            f"Downloading '{model_id}' files from '{model_tmp_dir}' to '{model_cache_path}'")
+
     if isS3:
         if endpoint_url:
-            subprocess.run([ "aws", "--endpoint-url", endpoint_url, "s3", "sync", "--quiet"] + s3_sync_args + [bucket_uri, model_cache_path])
+            subprocess.run(["aws", "--endpoint-url", endpoint_url, "s3", "sync",
+                           "--quiet"] + s3_sync_args + [bucket_uri, model_cache_path])
         else:
-            subprocess.run([ "aws", "s3", "sync", "--quiet"] + s3_sync_args + [bucket_uri, model_cache_path])
+            subprocess.run(["aws", "s3", "sync", "--quiet"] +
+                           s3_sync_args + [bucket_uri, model_cache_path])
     elif isLocal:
         if not bucket_uri.endswith("/"):
             bucket_uri = bucket_uri + "/"
-        subprocess.run(["cp -rf " + bucket_uri + "*" + " " + model_cache_path], shell=True)
+        subprocess.run(["cp -rf " + bucket_uri + "*" +
+                       " " + model_cache_path], shell=True)
     elif isGit:
         if not model_tmp_dir.endswith("/"):
             model_tmp_dir = model_tmp_dir + "/"
-        subprocess.run(["cp -rf " + model_tmp_dir + "*" + " " + model_cache_path], shell=True)
-        
+        subprocess.run(["cp -rf " + model_tmp_dir + "*" +
+                       " " + model_cache_path], shell=True)
+
     with open(os.path.join(path, "refs", "main"), "w") as f:
         f.write(f_hash)
+
 
 def timeit(func):
     """
@@ -137,7 +158,8 @@ def timeit(func):
         start_time = time.monotonic()
         ret = func(*args, **kwargs)
         time_taken = time.monotonic() - start_time
-        logger.info(f"LLM time counting fun {func} took {time_taken} s to complete")
+        logger.info(
+            f"LLM time counting fun {func} took {time_taken} s to complete")
         return ret
 
     return inner
@@ -172,7 +194,8 @@ def initialize_node(
                 git_uri = s3_mirror_config.git_uri
                 s3_sync_args = s3_mirror_config.s3_sync_args
                 try:
-                    download_model(model_id, endpoint_url, bucket_uri, git_uri, s3_sync_args=s3_sync_args)
+                    download_model(model_id, endpoint_url, bucket_uri,
+                                   git_uri, s3_sync_args=s3_sync_args)
                     logger.info("Done downloading the model from bucket!")
                 except RuntimeError:
                     logger.warning(

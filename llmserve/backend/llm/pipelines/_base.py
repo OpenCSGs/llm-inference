@@ -70,7 +70,7 @@ class BasePipeline(ABC):
             self.device = torch.device("cpu")
         else:
             self.device = torch.device(f"cuda:{device}")
-        
+
         logger.info(f"BasePipeline init device on {self.device}")
 
     @classmethod
@@ -83,12 +83,14 @@ class BasePipeline(ABC):
         device: Optional[torch.device] = None,
         **kwargs,
     ) -> "BasePipeline":
-        logger.info(f"BasePipeline initializer loading model {model_id} for device {device}")
+        logger.info(
+            f"BasePipeline initializer loading model {model_id} for device {device}")
         model, tokenizer = initializer.load(model_id)
-        logger.info(f"BasePipeline loaded model {model_id} done for device {device}")
+        logger.info(
+            f"BasePipeline loaded model {model_id} done for device {device}")
         if "task" in kwargs:
             del kwargs["task"]
-            
+
         return cls(
             model,
             tokenizer,
@@ -125,7 +127,7 @@ class BasePipeline(ABC):
             stopping_sequences = tokenize_stopping_sequences_where_needed(
                 self.tokenizer, generate_kwargs["stopping_sequences"]
             )
-    
+
         if stopping_sequences and model_inputs is not None:
             min_new_tokens_stopping_sequences = []
             for sequence in stopping_sequences:
@@ -163,8 +165,10 @@ class BasePipeline(ABC):
             postprocess_params,
         ) = self._sanitize_parameters(**kwargs)
         model_inputs = self.preprocess(inputs, **preprocess_params)
-        model_inputs = self._ensure_tensor_on_device(model_inputs, device=self.device)
-        forward_params = self._add_default_generate_kwargs(forward_params, model_inputs)
+        model_inputs = self._ensure_tensor_on_device(
+            model_inputs, device=self.device)
+        forward_params = self._add_default_generate_kwargs(
+            forward_params, model_inputs)
         logger.info(f"Forward params: {forward_params}")
         model_outputs = self.forward(model_inputs, **forward_params)
         model_outputs = self._ensure_tensor_on_device(
@@ -215,7 +219,8 @@ class BasePipeline(ABC):
             return [self._ensure_tensor_on_device(item, device) for item in inputs]
         elif isinstance(inputs, tuple):
             return tuple(
-                [self._ensure_tensor_on_device(item, device) for item in inputs]
+                [self._ensure_tensor_on_device(item, device)
+                 for item in inputs]
             )
         elif isinstance(inputs, torch.Tensor):
             if device == torch.device("cpu") and inputs.dtype in {
@@ -230,7 +235,8 @@ class BasePipeline(ABC):
     def _add_default_generate_kwargs(
         self, generate_kwargs: Dict[str, Any], model_inputs=None
     ) -> Dict[str, Any]:
-        stopping_criteria = self._get_stopping_criteria(generate_kwargs, model_inputs)
+        stopping_criteria = self._get_stopping_criteria(
+            generate_kwargs, model_inputs)
         if stopping_criteria:
             if generate_kwargs.get("stopping_criteria", None):
                 generate_kwargs["stopping_criteria"].extend(stopping_criteria)
@@ -242,7 +248,8 @@ class BasePipeline(ABC):
                     stopping_criteria
                 )
 
-        logits_processor = self._get_logits_processors(generate_kwargs, model_inputs)
+        logits_processor = self._get_logits_processors(
+            generate_kwargs, model_inputs)
         if logits_processor:
             if generate_kwargs.get("logits_processor", None):
                 generate_kwargs["logits_processor"].extend(logits_processor)

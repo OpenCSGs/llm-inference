@@ -72,7 +72,8 @@ class TransformersInitializer(LLMInitializer):
         from transformers.utils.hub import TRANSFORMERS_CACHE
 
         path = os.path.expanduser(
-            os.path.join(TRANSFORMERS_CACHE, f"models--{model_id.replace('/', '--')}")
+            os.path.join(TRANSFORMERS_CACHE,
+                         f"models--{model_id.replace('/', '--')}")
         )
         model_id_or_path = model_id
 
@@ -84,7 +85,8 @@ class TransformersInitializer(LLMInitializer):
             ) and os.path.exists(
                 os.path.join(path, "snapshots", snapshot_hash, "config.json")
             ):
-                model_id_or_path = os.path.join(path, "snapshots", snapshot_hash)
+                model_id_or_path = os.path.join(
+                    path, "snapshots", snapshot_hash)
         return model_id_or_path
 
     def load_model(self, model_id: str, loader: transformers.AutoModel = AutoModelForCausalLM) -> "PreTrainedModel":
@@ -96,24 +98,29 @@ class TransformersInitializer(LLMInitializer):
         model_id_or_path = self._get_model_location_on_disk(model_id)
         from_pretrained_kwargs = self._get_model_from_pretrained_kwargs()
 
-        logger.info(f"TransformersInitializer: load model from_pretrained_kwargs {from_pretrained_kwargs}")
+        logger.info(
+            f"TransformersInitializer: load model from_pretrained_kwargs {from_pretrained_kwargs}")
         try:
             # logger.info(f"TransformersInitializer loader {loader}")
-            logger.info(f"TransformersInitializer: Loading model {model_id_or_path} by AutoModelForCausalLM")
-            model = loader.from_pretrained(model_id_or_path, **from_pretrained_kwargs)
-            logger.info(f"TransformersInitializer: Load model {model_id_or_path} done")
+            logger.info(
+                f"TransformersInitializer: Loading model {model_id_or_path} by AutoModelForCausalLM")
+            model = loader.from_pretrained(
+                model_id_or_path, **from_pretrained_kwargs)
+            logger.info(
+                f"TransformersInitializer: Load model {model_id_or_path} done")
         except OSError:
             if model_id_or_path != model_id:
                 logger.warning(
                     f"Couldn't load model from derived path {model_id_or_path}, "
                     f"trying to load from model_id {model_id}"
                 )
-                model = loader.from_pretrained(model_id, **from_pretrained_kwargs)
+                model = loader.from_pretrained(
+                    model_id, **from_pretrained_kwargs)
             else:
                 raise
         model.eval()
         return model
-        
+
     def load_tokenizer(self, tokenizer_id: str) -> "PreTrainedTokenizer":
         """Load tokenizer.
 
@@ -122,12 +129,15 @@ class TransformersInitializer(LLMInitializer):
         """
         tokenizer_id_or_path = self._get_model_location_on_disk(tokenizer_id)
         from_pretrained_kwargs = self._get_model_from_pretrained_kwargs()
-        
-        logger.info(f"TransformersInitializer: load tokenizer from_pretrained_kwargs {from_pretrained_kwargs}")
-        param_trust_remote_code = from_pretrained_kwargs.get("trust_remote_code")
+
+        logger.info(
+            f"TransformersInitializer: load tokenizer from_pretrained_kwargs {from_pretrained_kwargs}")
+        param_trust_remote_code = from_pretrained_kwargs.get(
+            "trust_remote_code")
         # TODO make this more robust
         try:
-            logger.info(f"TransformersInitializer: Loading tokenizer by AutoTokenizer from {tokenizer_id_or_path}, trust_remote_code={param_trust_remote_code}")
+            logger.info(
+                f"TransformersInitializer: Loading tokenizer by AutoTokenizer from {tokenizer_id_or_path}, trust_remote_code={param_trust_remote_code}")
             return AutoTokenizer.from_pretrained(tokenizer_id_or_path, trust_remote_code=param_trust_remote_code)
             # return AutoTokenizer.from_pretrained(
             #     tokenizer_id_or_path,
@@ -182,6 +192,7 @@ class TransformersInitializer(LLMInitializer):
         """
         return tokenizer
 
+
 class FinetuneInitializer(TransformersInitializer):
     """Initialize model and tokenizer and place them on the correct device(s).
 
@@ -231,8 +242,10 @@ class FinetuneInitializer(TransformersInitializer):
                 **additional_load_kwargs,
             }
 
-        logger.info(f"FinetuneInitializer Loading model from {model_id_or_path}")
-        logger.info(f"FinetuneInitializer from_pretrained_kwargs {from_pretrained_kwargs}")
+        logger.info(
+            f"FinetuneInitializer Loading model from {model_id_or_path}")
+        logger.info(
+            f"FinetuneInitializer from_pretrained_kwargs {from_pretrained_kwargs}")
 
         try:
             model = loader.from_pretrained(
@@ -251,7 +264,8 @@ class FinetuneInitializer(TransformersInitializer):
                 raise
         model.eval()
         return model
-    
+
+
 class DeviceMapInitializer(TransformersInitializer):
     """Initialize model and tokenizer and place them on the correct device(s).
 
@@ -294,6 +308,7 @@ class DeviceMapInitializer(TransformersInitializer):
             device_map=self.device_map,
             **self.from_pretrained_kwargs,
         )
+
     def get_model_from_pretrained_kwargs(self):
         return self._get_model_from_pretrained_kwargs()
 
@@ -341,7 +356,8 @@ class SingleDeviceInitializer(TransformersInitializer):
         return self._get_model_from_pretrained_kwargs()
 
     def postprocess_model(self, model: "PreTrainedModel") -> "PreTrainedModel":
-        logger.info(f"SingleDeviceInitializer postprocess_model to device {self.device}")
+        logger.info(
+            f"SingleDeviceInitializer postprocess_model to device {self.device}")
         return super().postprocess_model(model.to(device=self.device))
 
 
@@ -392,7 +408,6 @@ class TransformersPipelineInitializer(LLMInitializer):
         return self._get_model_from_pretrained_kwargs()
 
 
-
 # should be remove soon
 class AutoModelInitializer(TransformersInitializer):
     """Initialize model and tokenizer and place them on the correct device(s).
@@ -441,7 +456,6 @@ class AutoModelInitializer(TransformersInitializer):
                 **from_pretrained_kwargs,
                 **additional_load_kwargs,
             }
-
 
         logger.info(f"Loading model {model_id_or_path}...")
         print("++++++++++++++++++ AutoModel")

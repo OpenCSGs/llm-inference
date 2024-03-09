@@ -10,6 +10,7 @@ import ray
 
 logger = get_logger(__name__)
 
+
 class VllmInitializer(LLMInitializer):
     """Initialize vllm model and tokenizer.
 
@@ -32,7 +33,8 @@ class VllmInitializer(LLMInitializer):
         self.model_init_kwargs = model_init_kwargs
 
     def _get_model_init_kwargs(self) -> Dict[str, Any]:
-        logger.info(f"Vllm initialize model parameters {self.model_init_kwargs}")
+        logger.info(
+            f"Vllm initialize model parameters {self.model_init_kwargs}")
         return AsyncEngineArgsFilter.from_model_init_kwargs(self.model_init_kwargs)
 
     def load_model(self, model_id: str) -> "AsyncLLMEngine":
@@ -46,8 +48,9 @@ class VllmInitializer(LLMInitializer):
                 "You can install it by `pip install vllm`\n",
             ]
 
-            raise ImportError(f"{error_message}\n\n{''.join(installation_guide)}")
-        
+            raise ImportError(
+                f"{error_message}\n\n{''.join(installation_guide)}")
+
         current_placement_group = ray.util.get_current_placement_group()
         logger.info(f"ray current placement group: {current_placement_group}")
         if current_placement_group:
@@ -55,8 +58,9 @@ class VllmInitializer(LLMInitializer):
             logger.info(f"ray current placement group bundle: {bundles}")
             for bundle in bundles:
                 bundle_gpus = bundle.get("GPU", 0)
-                logger.info(f"ray current placement group bundle gpus: {bundle_gpus}")
-        
+                logger.info(
+                    f"ray current placement group bundle gpus: {bundle_gpus}")
+
         logger.info(f"VllmInitializer loading {model_id}")
         engine_args = AsyncEngineArgs(
             model=model_id,

@@ -56,9 +56,11 @@ class Leaderboard:
         df_votes = pd.DataFrame(
             list(self.coll.aggregate(pipeline_votes)), columns=["LLM", "Votes"]
         )
-        df = pd.merge(df_votes, df_contentions, on="LLM", how="right").fillna(0)
+        df = pd.merge(df_votes, df_contentions,
+                      on="LLM", how="right").fillna(0)
         # Use m-estimate correction with prior of 1/3
-        df["Win Ratio"] = (df["Votes"] + 1) / (df["In Contention"] + 3) * 3 * 1000
+        df["Win Ratio"] = (df["Votes"] + 1) / \
+            (df["In Contention"] + 3) * 3 * 1000
         df["Win Ratio"] = df["Win Ratio"].astype(int)
         df = df.sort_values(by="Win Ratio", ascending=False)
         return df

@@ -37,18 +37,18 @@ def truncate_to_first_stop_token(
     if not stop_ids:
         return tokens
     stop_ids: List[torch.LongTensor] = [
-        torch.LongTensor([stop_id] if not isinstance(stop_id, list) else stop_id)
+        torch.LongTensor([stop_id] if not isinstance(
+            stop_id, list) else stop_id)
         for stop_id in stop_ids
     ]
     for i in range(len(tokens)):
         for stop_id_index, _ in enumerate(stop_ids):
             stop_id = stop_ids[stop_id_index].to(tokens.device)
-            if len(tokens) - i >= len(stop_id) and tokens[i : len(stop_id) + i].equal(
+            if len(tokens) - i >= len(stop_id) and tokens[i: len(stop_id) + i].equal(
                 stop_id
             ):
                 return tokens[:i]
     return tokens
-
 
 
 def _construct_prompt(prompt: Union[str, Prompt], prompt_format: str) -> str:
@@ -59,6 +59,7 @@ def _construct_prompt(prompt: Union[str, Prompt], prompt_format: str) -> str:
             return prompt.prompt
     return prompt_format.format(instruction=prompt) if prompt_format else prompt
 
+
 def construct_prompts(
     prompts: Union[str, Prompt, List[str], List[Prompt], Tuple[str]],
     prompt_format: str,
@@ -68,6 +69,7 @@ def construct_prompts(
         prompts = [prompts]
     return [_construct_prompt(prompt, prompt_format) for prompt in prompts]
 
+
 def construct_prompts_experimental(
     prompts: Union[str, Prompt, List[str], List[Prompt], Tuple[str]],
     prompt_format: str,
@@ -75,13 +77,14 @@ def construct_prompts_experimental(
     """Construct prompts from a prompt string or list of prompts."""
     if not isinstance(prompts, list):
         prompts = [prompts]
-    
+
     params = []
     for prompt in prompts:
         if isinstance(prompt, Prompt) and isinstance(prompt.prompt, Tuple):
-            params += [_construct_prompt(prompt, prompt_format) for prompt in prompt.prompt]
+            params += [_construct_prompt(prompt, prompt_format)
+                       for prompt in prompt.prompt]
         else:
-            params.append(_construct_prompt(prompt, prompt_format)) 
+            params.append(_construct_prompt(prompt, prompt_format))
     return params
 
 
@@ -99,7 +102,8 @@ def tokenize_stopping_sequences_where_needed(
     if not stopping_sequences:
         return None
     return [
-        tokenize_string(tokenizer, sequence) if isinstance(sequence, str) else sequence
+        tokenize_string(tokenizer, sequence) if isinstance(
+            sequence, str) else sequence
         for sequence in stopping_sequences
     ]
 

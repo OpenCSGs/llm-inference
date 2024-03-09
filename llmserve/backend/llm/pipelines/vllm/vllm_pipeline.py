@@ -42,7 +42,6 @@ class VllmPipeline(BasePipeline):
 
         self.loop = asyncio.get_event_loop()
 
-
     def _parse_sampling_params(
         self, generate_kwargs: Dict[str, Any], model_inputs=None
     ) -> "SamplingParams":
@@ -55,8 +54,9 @@ class VllmPipeline(BasePipeline):
                 "You can install it by `pip install vllm`\n",
             ]
 
-            raise ImportError(f"{error_message}\n\n{''.join(installation_guide)}")
-            
+            raise ImportError(
+                f"{error_message}\n\n{''.join(installation_guide)}")
+
         sampling_params = generate_kwargs.copy()
         try:
             if sampling_params.n != 1:
@@ -91,10 +91,9 @@ class VllmPipeline(BasePipeline):
             # Wrap the error in ValidationError so the status code
             # returned to the user is correct.
             raise SystemError(str(e)) from e
-    
+
     def __call__(self, inputs: List[str], **kwargs) -> List[Response]:
         return self.loop.run_until_complete(self._generate(inputs, **kwargs))
-    
 
     async def _generate(self, inputs: List[str], **kwargs) -> List[Response]:
         try:
@@ -106,11 +105,12 @@ class VllmPipeline(BasePipeline):
                 "You can install it by `pip install vllm`\n",
             ]
 
-            raise ImportError(f"{error_message}\n\n{''.join(installation_guide)}")
+            raise ImportError(
+                f"{error_message}\n\n{''.join(installation_guide)}")
         logger.info(inputs)
         inputs = construct_prompts(
             inputs, prompt_format=self.prompt_format)
-        
+
         logger.info(inputs)
 
         sampling_params = VLLMSamplingParams.merge_generation_params(
@@ -163,7 +163,7 @@ class VllmPipeline(BasePipeline):
             # Ensure that we cancel on the engine once we have exited the streaming
             # phase
             self.engine._abort(request_id)
-            
+
         return responses
 
     def preprocess(self, prompts: List[str], **generate_kwargs):
@@ -171,7 +171,7 @@ class VllmPipeline(BasePipeline):
 
     def forward(self, model_inputs, **generate_kwargs):
         pass
-    
+
     @classmethod
     def from_initializer(
         cls,

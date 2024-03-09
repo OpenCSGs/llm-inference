@@ -1,3 +1,4 @@
+from pydantic import BaseModel
 import asyncio
 import copy
 import time
@@ -15,7 +16,7 @@ from fastapi import FastAPI, Body, Header
 from ray import serve
 from ray.exceptions import RayActorError
 from ray.serve.deployment import ClassNode
-from ray.serve._private.constants import ( DEFAULT_HTTP_PORT )
+from ray.serve._private.constants import (DEFAULT_HTTP_PORT)
 
 from llmserve.backend.llm.predictor import LLMPredictor
 from llmserve.backend.logger import get_logger
@@ -30,7 +31,7 @@ from llmserve.backend.server.models import (
     Scaling_Config_Simple,
     InitializationConfig
 )
-from llmserve.backend.server.utils import parse_args,render_gradio_params
+from llmserve.backend.server.utils import parse_args, render_gradio_params
 from llmserve.common.constants import GATEWAY_TIMEOUT_S
 from ray.serve.gradio_integrations import GradioIngress
 import gradio as gr
@@ -38,14 +39,14 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from ray.serve.schema import (
     ServeInstanceDetails,
-)  
+)
 from ray.dashboard.modules.serve.sdk import ServeSubmissionClient
 
 import llmserve.backend.server.config as CONFIG
 from llmserve.api import sdk
 from llmserve.common.utils import _replace_prefix, _reverse_prefix
 
-#logger = get_logger(__name__)
+# logger = get_logger(__name__)
 logger = get_logger("ray.serve")
 
 app = FastAPI()
@@ -58,19 +59,20 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-from pydantic import BaseModel
 
 class ModelConfig(BaseModel):
     model_id: str
     model_task: str
     model_revision: str
     is_oob: bool
-    #initialization: InitializationConfig
+    # initialization: InitializationConfig
     scaling_config: Scaling_Config_Simple
+
 
 class ModelIdentifier(BaseModel):
     model_id: str
     model_revision: str = "main"
+
 
 @serve.deployment(
     autoscaling_config={
@@ -137,7 +139,8 @@ class LLMDeployment(LLMPredictor):
         else:
             new_args: Args = config
 
-        should_reinit_worker_group = force or self._should_reinit_worker_group(new_args)
+        should_reinit_worker_group = force or self._should_reinit_worker_group(
+            new_args)
 
         self.args = new_args
         if should_reinit_worker_group:
@@ -145,7 +148,8 @@ class LLMDeployment(LLMPredictor):
                 self.args.air_scaling_config,
                 pg_timeout_s=self.args.scaling_config.pg_timeout_s,
             )
-        self.update_batch_params(self.get_max_batch_size() ,self.get_batch_wait_timeout_s())
+        self.update_batch_params(
+            self.get_max_batch_size(), self.get_batch_wait_timeout_s())
         logger.info("LLM Deployment Reconfigured.")
 
     @property
@@ -186,13 +190,13 @@ class LLMDeployment(LLMPredictor):
         with async_timeout.timeout(GATEWAY_TIMEOUT_S):
             text = await self.generate_text_batch(
                 prompt,
-                #[prompt],
+                # [prompt],
                 # priority=QueuePriority.GENERATE_TEXT,
                 # start_timestamp=start_timestamp,
             )
             # return text[0]
             return text
-    
+
     # no need anymore, will be delete soon
     async def generate(self, prompt: Prompt):
         time.time()
@@ -202,12 +206,12 @@ class LLMDeployment(LLMPredictor):
         with async_timeout.timeout(GATEWAY_TIMEOUT_S):
             text = await self.generate_text_batch(
                 prompt,
-                #[prompt],
+                # [prompt],
                 # priority=QueuePriority.GENERATE_TEXT,
                 # start_timestamp=start_timestamp,
             )
         return text
-        #return text[0]
+        # return text[0]
 
     @app.post("/batch", include_in_schema=False)
     async def batch_generate_text(self, prompts: List[Prompt]):
@@ -227,17 +231,18 @@ class LLMDeployment(LLMPredictor):
                 ]
             )
             return texts
-        
-    def update_batch_params(self, new_max_batch_size:int, new_batch_wait_timeout_s:float):
+
+    def update_batch_params(self, new_max_batch_size: int, new_batch_wait_timeout_s: float):
         self.generate_text_batch.set_max_batch_size(new_max_batch_size)
-        self.generate_text_batch.set_batch_wait_timeout_s(new_batch_wait_timeout_s)
+        self.generate_text_batch.set_batch_wait_timeout_s(
+            new_batch_wait_timeout_s)
         logger.info(f"new_max_batch_size is {new_max_batch_size}")
         logger.info(f"new_batch_wait_timeout_s is {new_batch_wait_timeout_s}")
 
     @serve.batch(
-         max_batch_size=18,
-         batch_wait_timeout_s=1,
-     )
+        max_batch_size=18,
+        batch_wait_timeout_s=1,
+    )
     async def generate_text_batch(
         self,
         prompts: List[Prompt],
@@ -314,6 +319,7 @@ class LLMDeployment(LLMPredictor):
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}:{self.args.model_config.model_id}"
 
+
 @serve.deployment(
     # TODO make this configurable in llmserve run
     autoscaling_config={
@@ -322,7 +328,7 @@ class LLMDeployment(LLMPredictor):
         "max_replicas": 2,
     },
     ray_actor_options={
-        "num_cpus": 0.1 
+        "num_cpus": 0.1
     },
     max_concurrent_queries=50,  # Maximum backlog for a single replica
 )
@@ -376,7 +382,7 @@ class RouterDeployment:
         )
         logger.info(metadata)
         return {"metadata": metadata}
-    
+
     @app.get("/models")
     async def models(self) -> List[str]:
         return list(self._models.keys())
@@ -390,7 +396,7 @@ class RouterDeployment:
         "max_replicas": 2,
     },
     ray_actor_options={
-        "num_cpus": 0.1 
+        "num_cpus": 0.1
     },
     max_concurrent_queries=50,  # Maximum backlog for a single replica
 )
@@ -404,7 +410,7 @@ class ExperimentalDeployment(GradioIngress):
         self._model_configuration = model_configuration
         hg_task = self._model_configuration.model_config.model_task
         pipeline_info = render_gradio_params(hg_task)
-        
+
         self.pipeline_info = pipeline_info
         super().__init__(self._chose_ui())
 
@@ -421,15 +427,16 @@ class ExperimentalDeployment(GradioIngress):
         logger.info(f"ExperimentalDeployment query.results {results}")
         results = results[0]
         return results
-    
+
     def _chose_ui(self) -> Callable:
-        logger.info(f'Experiment Deployment chose ui for {self._model_configuration.model_config.model_id}')
+        logger.info(
+            f'Experiment Deployment chose ui for {self._model_configuration.model_config.model_id}')
 
         gr_params = self.pipeline_info
         del gr_params["preprocess"]
         del gr_params["postprocess"]
 
-        return lambda: gr.Interface(self.query, **gr_params, title = self._model_configuration.model_config.model_id)
+        return lambda: gr.Interface(self.query, **gr_params, title=self._model_configuration.model_config.model_id)
 
 
 @serve.deployment(
@@ -440,7 +447,7 @@ class ExperimentalDeployment(GradioIngress):
         "max_replicas": 2,
     },
     ray_actor_options={
-        "num_cpus": 0.1 
+        "num_cpus": 0.1
     },
     max_concurrent_queries=50,  # Maximum backlog for a single replica
 )
@@ -452,55 +459,56 @@ class ApiServer:
         self.compare_models = []
         self.compare_deployments = {}
         self.compare_model_configs = {}
-        #self.newload_model = []
+        # self.newload_model = []
         self.support_models = parse_args("./models")
 
     def list_deployment_from_ray(self, experimetal: bool) -> List[Any]:
         serve_details = ServeInstanceDetails(
-        **ServeSubmissionClient(CONFIG.RAY_AGENT_ADDRESS).get_serve_details())
+            **ServeSubmissionClient(CONFIG.RAY_AGENT_ADDRESS).get_serve_details())
         deployments = []
         if experimetal:
             for key, value in serve_details.applications.items():
                 if "apiserver" in key or "cmp_" in key:
                     continue
                 apps = value.dict()
-                #filtered_deployments= apps.get("deployments").copy()
+                # filtered_deployments= apps.get("deployments").copy()
                 filtered_deployments = {}
                 deploy_time = apps.get("last_deployed_time_s")
                 name = apps.get("name")
                 model_id = _replace_prefix(name)
-                for k,v in apps.get("deployments").items():
-                    if "ExperimentalDeployment"  in k:
+                for k, v in apps.get("deployments").items():
+                    if "ExperimentalDeployment" in k:
                         continue
                     v["last_deployed_time_s"] = deploy_time
                     v["id"] = model_id
-                    filtered_deployments.update(v.copy()) 
-                deployments.append(filtered_deployments)         
+                    filtered_deployments.update(v.copy())
+                deployments.append(filtered_deployments)
         else:
             for key, value in serve_details.applications.items():
                 if "cmp_models" not in key:
                     continue
-                apps = value.dict()       
+                apps = value.dict()
                 deploy_time = apps.get("last_deployed_time_s")
                 filtered_deployments = {}
                 cmp_models = []
-                for k,v in apps.get("deployments").items():
-                    if "RouterDeployment"  in k:
-                        continue  
-                    model_id = v.get("deployment_config").get("user_config").get("model_config").get("model_id")
+                for k, v in apps.get("deployments").items():
+                    if "RouterDeployment" in k:
+                        continue
+                    model_id = v.get("deployment_config").get(
+                        "user_config").get("model_config").get("model_id")
                     v["last_deployed_time_s"] = deploy_time
                     v["id"] = model_id
                     cmp_models.append(v.copy())
-     
+
                 prefix = apps.get("name").split('_', 2)
-                filtered_deployments["url"] = CONFIG.URL + prefix[0] + "_" + prefix[2]
+                filtered_deployments["url"] = CONFIG.URL + \
+                    prefix[0] + "_" + prefix[2]
                 filtered_deployments["id"] = prefix[2]
                 filtered_deployments["models"] = cmp_models
-                deployments.append(filtered_deployments) 
+                deployments.append(filtered_deployments)
         return deployments
 
-
-    def load_model(self,models: Union[List[str], List[ModelConfig], List[LLMApp]],comparation: bool) -> List[Any]:
+    def load_model(self, models: Union[List[str], List[ModelConfig], List[LLMApp]], comparation: bool) -> List[Any]:
         newload_model = []
         self.compare_deployments = {}
         self.compare_model_configs = {}
@@ -518,7 +526,7 @@ class ApiServer:
             max_concurrent_queries = deployment_config.pop(
                 "max_concurrent_queries", None
             ) or (user_config["model_config"]["generation"].get("max_batch_size", 1) if user_config["model_config"]["generation"] else 1)
-            deployment = LLMDeployment.options(
+            deployment = LLMDeployment.options(  # pylint:disable=no-member
                 name=name,
                 max_concurrent_queries=max_concurrent_queries,
                 user_config=user_config,
@@ -527,30 +535,29 @@ class ApiServer:
             if not comparation:
                 self.model_configs[model.model_config.model_id] = model
                 self.deployments[model.model_config.model_id] = deployment
-            else:         
+            else:
                 self.compare_model_configs[model.model_config.model_id] = model
                 self.compare_deployments[model.model_config.model_id] = deployment
             newload_model.append(model.model_config.model_id)
             logger.info(f"Appended {model.model_config.model_id}")
         return newload_model
-         
 
-    def load_model_args(self,args: ModelConfig) -> Dict[str, Any]:
+    def load_model_args(self, args: ModelConfig) -> Dict[str, Any]:
         if args.model_id in self.model_configs.keys():
             model = self.model_configs.get(args.model_id)
         else:
             model = CONFIG.EXPERIMENTAL_LLMTEMPLATE
         if args.scaling_config:
-            for key,value in args.scaling_config.__dict__.items():
-                setattr(model.scaling_config,key,value)
-        #if args.initialization.initializer:
+            for key, value in args.scaling_config.__dict__.items():
+                setattr(model.scaling_config, key, value)
+        # if args.initialization.initializer:
         #    for key,value in args.initialization.initializer.__dict__.items():
-        #        setattr(model.model_config.initialization.initializer,key,value)  
-        #if args.initialization.pipeline:
-        #    model.model_config.initialization.pipeline =  args.initialization.pipeline   
+        #        setattr(model.model_config.initialization.initializer,key,value)
+        # if args.initialization.pipeline:
+        #    model.model_config.initialization.pipeline =  args.initialization.pipeline
         model.model_config.model_id = args.model_id
         user_config = model.dict()
-        if args.is_oob :
+        if args.is_oob:
             deployment_config = model.deployment_config.dict()
         else:
             deployment_config = model.deployment_config
@@ -558,45 +565,48 @@ class ApiServer:
         max_concurrent_queries = deployment_config.pop(
             "max_concurrent_queries", None
         ) or (user_config["model_config"]["generation"].get("max_batch_size", 1) if user_config["model_config"]["generation"] else 1)
-            
-        deployment = LLMDeployment.options(
-                name=_reverse_prefix(args.model_id),
-                max_concurrent_queries=max_concurrent_queries,
-                user_config=user_config,
-                **deployment_config,
-            ).bind()
+
+        deployment = LLMDeployment.options(  # pylint:disable=no-member
+            name=_reverse_prefix(args.model_id),
+            max_concurrent_queries=max_concurrent_queries,
+            user_config=user_config,
+            **deployment_config,
+        ).bind()
 
         serve_name = _reverse_prefix(args.model_id)
-        serve_port = user_config["model_config"]["initialization"]["runtime_env"].get("serve_port", DEFAULT_HTTP_PORT)
-        app = ExperimentalDeployment.bind(deployment, model)
+        serve_port = user_config["model_config"]["initialization"]["runtime_env"].get(
+            "serve_port", DEFAULT_HTTP_PORT)
+        app = ExperimentalDeployment.bind(  # pylint:disable=no-member
+            deployment, model)
         ray._private.usage.usage_lib.record_library_usage("llmserve")
-        serve.run(app, host=CONFIG.SERVE_RUN_HOST, name = serve_name, route_prefix = "/" + serve_name, _blocking = False)
+        serve.run(app, host=CONFIG.SERVE_RUN_HOST, name=serve_name,
+                  route_prefix="/" + serve_name, _blocking=False)
         self.model_configs[args.model_id] = model
-        self.deployments[args.model_id]= deployment
+        self.deployments[args.model_id] = deployment
         return {"url": "http://" + CONFIG.SERVE_RUN_HOST + ":" + str(serve_port) + "/" + serve_name, "models": self.model_configs}
 
-
     @app.post("/start_experimental")
-    async def start_experimental(self,models: Union[ModelConfig, str] = Body(..., embed=True)) -> Dict[str, Any]:
+    async def start_experimental(self, models: Union[ModelConfig, str] = Body(..., embed=True)) -> Dict[str, Any]:
         if isinstance(models, ModelConfig) and not models.is_oob:
             return self.load_model_args(models)
         else:
             mods = models
             if isinstance(models, ModelConfig):
                 mods = models.model_id
-            newload_model = self.load_model(mods,False)
+            newload_model = self.load_model(mods, False)
             if newload_model == []:
                 return {"response": "No models to load, model already exist."}
             for model in newload_model:
                 serve_name = _reverse_prefix(model)
-                app = ExperimentalDeployment.bind(self.deployments.get(model), self.model_configs.get(model))
+                app = ExperimentalDeployment.bind(  # pylint:disable=no-member
+                    self.deployments.get(model), self.model_configs.get(model))
                 ray._private.usage.usage_lib.record_library_usage("llmserve")
-                serve.run(app, host=CONFIG.SERVE_RUN_HOST, name = serve_name, route_prefix = "/" + serve_name, _blocking = False)
+                serve.run(app, host=CONFIG.SERVE_RUN_HOST, name=serve_name,
+                          route_prefix="/" + serve_name, _blocking=False)
         return {"start_experimental": serve_name, "models": self.model_configs}
 
-
-    #@app.get("/serving_status")
-    #async def serving_status(self, models: List[str] = Body(..., description="models name", embed=True)) -> Dict[str, Any]:
+    # @app.get("/serving_status")
+    # async def serving_status(self, models: List[str] = Body(..., description="models name", embed=True)) -> Dict[str, Any]:
     #    serve_details = ServeInstanceDetails(
     #        **ServeSubmissionClient(CONFIG.RAY_AGENT_ADDRESS).get_serve_details())
     #    serving_status = {}
@@ -613,8 +623,9 @@ class ApiServer:
     #    return serving_status
 
     @app.post("/start_serving")
-    async def start_serving(self, user_name: Annotated[str, Header()], 
-                            models: Union[List[ModelConfig], ModelConfig] = Body(...)
+    async def start_serving(self, user_name: Annotated[str, Header()],
+                            models: Union[List[ModelConfig],
+                                          ModelConfig] = Body(...)
                             ) -> Dict[str, Any]:
         logger.info(f"api start serving {models}")
         models = [models] if isinstance(models, ModelConfig) else models
@@ -626,35 +637,43 @@ class ApiServer:
             model_config = {}
             deployment[key] = self.compare_deployments[key]
             model_config[key] = value
-            app = RouterDeployment.bind(deployment, model_config)
+            app = RouterDeployment.bind(  # pylint:disable=no-member
+                deployment, model_config)
             ray._private.usage.usage_lib.record_library_usage("llmserve")
-            #deployment_config = model_config[key].deployment_config.dict()
+            # deployment_config = model_config[key].deployment_config.dict()
             user_config = value.dict()
-            model_id = _replace_prefix(user_config["model_config"].get("model_id"))
+            model_id = _replace_prefix(
+                user_config["model_config"].get("model_id"))
             # TBD: To add revision to model_config, that's needed to be implemented for CLI (in YAML) and API together.
             # ... For now, that's "main" before implement this.
-            model_revision = user_config["model_config"].get("model_revision", "main")
+            model_revision = user_config["model_config"].get(
+                "model_revision", "main")
             model_identifier = model_id.strip() + "-" + model_revision.strip()
             logger.info(f"Starting serving for {model_identifier} ...")
-            model_hash = hashlib.md5(model_identifier.encode()).hexdigest()[:12]
+            model_hash = hashlib.md5(
+                model_identifier.encode()).hexdigest()[:12]
             serving_name = user_name.strip() + "-" + model_hash
-            serve.run(app, host=CONFIG.SERVE_RUN_HOST, name = serving_name, route_prefix="/" + serving_name, _blocking = False)
+            serve.run(app, host=CONFIG.SERVE_RUN_HOST, name=serving_name,
+                      route_prefix="/" + serving_name, _blocking=False)
             started_serving[serving_name] = value
         return started_serving
 
     @app.get("/list_serving")
     async def list_serving(self, user_name: Annotated[str, Header()],
-                           models: Union[List[ModelIdentifier], ModelIdentifier] = Body(default=None)
+                           models: Union[List[ModelIdentifier],
+                                         ModelIdentifier] = Body(default=None)
                            ) -> Dict[str, Any]:
         serving_info = {}
         app_list = []
         if models:
-            models = [models] if isinstance(models, ModelIdentifier) else models
+            models = [models] if isinstance(
+                models, ModelIdentifier) else models
             for mod in models:
                 model_revision = mod.model_revision if mod.model_revision else "main"
                 mod_identifier = mod.model_id.strip() + "-" + model_revision.strip()
                 logger.info("Getting serving for {model_identifier} ...")
-                model_hash = hashlib.md5(mod_identifier.encode()).hexdigest()[:12]
+                model_hash = hashlib.md5(
+                    mod_identifier.encode()).hexdigest()[:12]
                 app_list.append(user_name.strip() + "-" + model_hash)
         serve_details = ServeInstanceDetails(
             **ServeSubmissionClient(CONFIG.RAY_AGENT_ADDRESS).get_serve_details())
@@ -670,33 +689,38 @@ class ApiServer:
                 apps = serve_details.applications[app_name].dict()
                 app_status = apps.get("status").value
                 route_prefix = apps.get("route_prefix")
-                #TBD need get real serve port, need write to ray deployment fristly?
+                # TBD need get real serve port, need write to ray deployment fristly?
                 serve_port = "8000"
                 if "ExperimentalDeployment" in apps.get("deployments").keys():
                     for k, v in apps.get("deployments").items():
                         deployment_status[k] = v.get("status").value
                         if k != "ExperimentalDeployment":
-                            model_id = v.get("deployment_config").get("user_config").get("model_config").get("model_id")
-                            model_url[model_id] = "/" + _reverse_prefix(model_id)
+                            model_id = v.get("deployment_config").get(
+                                "user_config").get("model_config").get("model_id")
+                            model_url[model_id] = "/" + \
+                                _reverse_prefix(model_id)
                 elif "RouterDeployment" in apps.get("deployments").keys():
                     for k, v in apps.get("deployments").items():
                         deployment_status[k] = v.get("status").value
                         if k != "RouterDeployment":
-                            model_id = v.get("deployment_config").get("user_config").get("model_config").get("model_id")
-                            model_url[model_id] = route_prefix + "/" + _reverse_prefix(model_id) + "/run/predict"
+                            model_id = v.get("deployment_config").get(
+                                "user_config").get("model_config").get("model_id")
+                            model_url[model_id] = route_prefix + "/" + \
+                                _reverse_prefix(model_id) + "/run/predict"
                 else:
                     # Neither ExperimentalDeployment nor RouterDeployment is included in {model}, not a llm-serve application, pass
                     pass
-                serving_status[app_name] = {"application_status": app_status, "deployments_status": deployment_status}
+                serving_status[app_name] = {
+                    "application_status": app_status, "deployments_status": deployment_status}
                 model_info["status"] = serving_status
                 model_info["url"] = model_url
                 serving_info[app_name] = model_info
         return serving_info
 
-
     @app.post("/stop_serving")
-    async def stop_serving(self, user_name: Annotated[str, Header()], 
-                           models: Union[List[ModelIdentifier], ModelIdentifier] = Body(..., description="Specify model name and revision")
+    async def stop_serving(self, user_name: Annotated[str, Header()],
+                           models: Union[List[ModelIdentifier], ModelIdentifier] = Body(
+                               ..., description="Specify model name and revision")
                            ) -> Dict[str, Any]:
         models = [models] if isinstance(models, ModelIdentifier) else models
         stopped_serving = []
@@ -706,27 +730,26 @@ class ApiServer:
             logger.info("Stopping serving for {model_identifier} ...")
             model_hash = hashlib.md5(mod_identifier.encode()).hexdigest()[:12]
             serving_name = user_name.strip() + "-" + model_hash
-            serve.delete(serving_name, _blocking = True)
+            serve.delete(serving_name, _blocking=True)
             stopped_serving.append(mod.model_id)
         return {"Stopped Serving": stopped_serving}
 
-
     @app.get("/list_deployments")
-    async def list_deployments(self)-> List[Any]:
+    async def list_deployments(self) -> List[Any]:
         deployments = self.list_deployment_from_ray(True)
-            
+
         return deployments
-    
+
     @app.get("/list_apps")
-    async def list_apps(self)-> Dict[str,Any]:
+    async def list_apps(self) -> Dict[str, Any]:
         serve_details = ServeInstanceDetails(
-        **ServeSubmissionClient(CONFIG.RAY_AGENT_ADDRESS).get_serve_details())
-            
+            **ServeSubmissionClient(CONFIG.RAY_AGENT_ADDRESS).get_serve_details())
+
         return serve_details.applications
-    
+
     @app.get("/oob_models")
-    async def list_oob_models(self)-> Dict[str, Any]:
-        text ,sum, image2text, trans, qa = [],[],[],[],[]
+    async def list_oob_models(self) -> Dict[str, Any]:
+        text, sum, image2text, trans, qa = [], [], [], [], []
         for model in self.support_models:
             if model.model_config.model_task == "text-generation":
                 text.append(model.model_config.model_id)
@@ -737,17 +760,17 @@ class ApiServer:
             if model.model_config.model_task == "question-answering":
                 qa.append(model.model_config.model_id)
             if model.model_config.model_task == "image-to-text":
-                image2text.append(model.model_config.model_id) 
+                image2text.append(model.model_config.model_id)
         return {
-            "text-generation":text,
-            "translation":trans,
-            "summarization":sum,
-            "question-answering":qa,
-            "image-to-text":image2text,
+            "text-generation": text,
+            "translation": trans,
+            "summarization": sum,
+            "question-answering": qa,
+            "image-to-text": image2text,
         }
 
-    #@app.get("/metadata")
-    #async def metadata(self, models: List[str] = Body(..., description="models name", embed=True)) -> Dict[str, Any]:
+    # @app.get("/metadata")
+    # async def metadata(self, models: List[str] = Body(..., description="models name", embed=True)) -> Dict[str, Any]:
     #    metadata = {}
     #    for model in models:
     #        #model = _replace_prefix(model)
@@ -760,14 +783,12 @@ class ApiServer:
     #        metadata[model] = metadata
     #    return metadata
 
-
     @app.get("/models")
     async def get_model(self, models: List[str] = Body(..., description="models name", embed=True)) -> Dict[str, Any]:
         model_config = {}
         for model in models:
             model_config[model] = self.model_configs.get(model)
         return model_config
-
 
     @app.post("/update_serving")
     async def update_model(self, model: ModelConfig = Body(..., embed=True)) -> Dict[str, Any]:
@@ -777,43 +798,46 @@ class ApiServer:
             if model.model_id != mod.get("id"):
                 continue
             md = mod.get("deployment_config").get("user_config")
-            md = LLMApp(scaling_config=md.get("scaling_config"),model_config=md.get("model_config"),deployment_config= md.get("deployment_config"))
+            md = LLMApp(scaling_config=md.get("scaling_config"), model_config=md.get(
+                "model_config"), deployment_config=md.get("deployment_config"))
             if model.scaling_config:
-                for key,value in model.scaling_config.__dict__.items():
-                    setattr(md.scaling_config,key,value)
-                
+                for key, value in model.scaling_config.__dict__.items():
+                    setattr(md.scaling_config, key, value)
+
                 user_config = md.dict()
-                deployment_config = md.deployment_config.dict()
+                deployment_config = md.deployment_config.dict()  # pylint:disable=no-member
                 deployment_config = deployment_config.copy()
                 max_concurrent_queries = deployment_config.pop(
                     "max_concurrent_queries", None
                 ) or (user_config["model_config"]["generation"].get("max_batch_size", 1) if user_config["model_config"]["generation"] else 1)
-                
-                deployment = LLMDeployment.options(
+
+                deployment = LLMDeployment.options(  # pylint:disable=no-member
                     name=serve_conf["name"],
                     max_concurrent_queries=max_concurrent_queries,
                     user_config=user_config,
                     **deployment_config,
                 ).bind()
-                app = ExperimentalDeployment.bind(md, deployment)
+                app = ExperimentalDeployment.bind(  # pylint:disable=no-member
+                    md, deployment)
                 ray._private.usage.usage_lib.record_library_usage("llmserve")
-                
-                serve.run(app, host=CONFIG.SERVE_RUN_HOST, name = serve_conf["name"], route_prefix = "/" + serve_conf["name"], _blocking = False)
+
+                serve.run(app, host=CONFIG.SERVE_RUN_HOST,
+                          name=serve_conf["name"], route_prefix="/" + serve_conf["name"], _blocking=False)
                 try:
-                    serve_port = user_config["model_config"]["initialization"]["runtime_env"].get("serve_port", DEFAULT_HTTP_PORT)
+                    serve_port = user_config["model_config"]["initialization"]["runtime_env"].get(
+                        "serve_port", DEFAULT_HTTP_PORT)
                 except:
                     serve_port = DEFAULT_HTTP_PORT
         return {"url": "http://" + CONFIG.SERVE_RUN_HOST + ":" + str(serve_port) + "/" + serve_conf["name"], "models": md}
 
-
-    def  load_model_for_comparation(self, models: List[Union[ModelConfig, str]]):
+    def load_model_for_comparation(self, models: List[Union[ModelConfig, str]]):
         mods = []
         self.compare_deployments = {}
         self.compare_model_configs = {}
 
         for model in models:
             logger.info(model)
-            parsed_models =[]
+            parsed_models = []
             template = []
             if isinstance(model, str):
                 parsed_models = parse_args(model)
@@ -823,10 +847,10 @@ class ApiServer:
                     parsed_models = parse_args(model.model_id)
                 else:
                     template = CONFIG.COMPARATION_LLMTEMPLATE
-                    parsed_model= copy.deepcopy(template)
+                    parsed_model = copy.deepcopy(template)
                     if model.scaling_config:
-                        for key,value in model.scaling_config.__dict__.items():
-                            setattr(parsed_model.scaling_config,key,value)
+                        for key, value in model.scaling_config.__dict__.items():
+                            setattr(parsed_model.scaling_config, key, value)
                     parsed_model.model_config.model_id = model.model_id
                     parsed_models.append(parsed_model)
             for md in parsed_models:
@@ -840,32 +864,32 @@ class ApiServer:
                     "max_concurrent_queries", None
                 ) or (user_config["model_config"]["generation"].get("max_batch_size", 1) if user_config["model_config"]["generation"] else 1)
                 name = _reverse_prefix(md.model_config.model_id)
-                deployment = LLMDeployment.options(
+                deployment = LLMDeployment.options(  # pylint:disable=no-member
                     name=name,
                     max_concurrent_queries=max_concurrent_queries,
                     user_config=user_config,
                     **deployment_config,
                 ).bind()
-            
-                self.compare_model_configs[md.model_config.model_id] = md
-                self.compare_deployments[md.model_config.model_id]= deployment
-        return 
 
-    def run_frontend(self,prefix,compare_prefix):
-        logger.info("startting LLMServeFrontend") 
+                self.compare_model_configs[md.model_config.model_id] = md
+                self.compare_deployments[md.model_config.model_id] = deployment
+        return
+
+    def run_frontend(self, prefix, compare_prefix):
+        logger.info("startting LLMServeFrontend")
         from llmserve.frontend.app import LLMServeFrontend
         ray._private.usage.usage_lib.record_library_usage("llmserve")
         run_duration = 10 * 60
         start_time = time.time()
         while True:
             serve_details = ServeInstanceDetails(
-            **ServeSubmissionClient(CONFIG.RAY_AGENT_ADDRESS).get_serve_details())
+                **ServeSubmissionClient(CONFIG.RAY_AGENT_ADDRESS).get_serve_details())
             app = {}
             for key, value in serve_details.applications.items():
                 if compare_prefix not in key:
                     continue
-                app = value.dict()    
-            ##logger.info(app)
+                app = value.dict()
+            # logger.info(app)
             if app.get("status") == "RUNNING":
                 break
             current_time = time.time()
@@ -873,16 +897,18 @@ class ApiServer:
             if elapsed_time >= run_duration:
                 break
             time.sleep(5)
-        logger.info(app)     
-     
-        comparationApp = LLMServeFrontend.options(ray_actor_options={"num_cpus": 1}, name="LLMServeFrontend").bind(CONFIG.URL + compare_prefix)     
-        serve.run(comparationApp, host=CONFIG.SERVE_RUN_HOST, name = prefix, route_prefix = "/" + prefix, _blocking = False)
+        logger.info(app)
 
+        comparationApp = LLMServeFrontend.options(ray_actor_options={  # pylint:disable=no-member
+                                                  "num_cpus": 1}, name="LLMServeFrontend").bind(CONFIG.URL + compare_prefix)
+        serve.run(comparationApp, host=CONFIG.SERVE_RUN_HOST,
+                  name=prefix, route_prefix="/" + prefix, _blocking=False)
 
     @app.post("/launch_comparation")
     async def launch_comparation(self, models: List[ModelConfig], user: str = Body(..., embed=True)) -> Dict[str, Any]:
         self.load_model_for_comparation(models)
-        app = RouterDeployment.bind(self.compare_deployments, self.compare_model_configs)
+        app = RouterDeployment.bind(  # pylint:disable=no-member
+            self.compare_deployments, self.compare_model_configs)
         logger.info(self.compare_model_configs)
         ray._private.usage.usage_lib.record_library_usage("llmserve")
         prefix = "cmp_models"
@@ -892,18 +918,21 @@ class ApiServer:
         if user:
             prefix = prefix + "_" + user + "_" + uuid_s[:6]
             prefix_cmp = prefix_cmp + "_" + user + "_" + uuid_s[:6]
-        serve.run(app, host=CONFIG.SERVE_RUN_HOST, name = prefix, route_prefix="/" + prefix, _blocking = False)
-     
-        thread = threading.Thread(target=self.run_frontend,args=(prefix_cmp,prefix))
-        thread.daemon = True 
+        serve.run(app, host=CONFIG.SERVE_RUN_HOST, name=prefix,
+                  route_prefix="/" + prefix, _blocking=False)
+
+        thread = threading.Thread(
+            target=self.run_frontend, args=(prefix_cmp, prefix))
+        thread.daemon = True
         thread.start()
-        #await self.run_frontend(prefix_cmp, prefix)
-        return {"url": CONFIG.URL + prefix_cmp , "models" : self.compare_model_configs, "ids" :[prefix, prefix_cmp]}
-    
+        # await self.run_frontend(prefix_cmp, prefix)
+        return {"url": CONFIG.URL + prefix_cmp, "models": self.compare_model_configs, "ids": [prefix, prefix_cmp]}
+
     @app.post("/update_comparation")
     async def update_comparation(self, models: List[ModelConfig], name: str = Body(..., embed=True)) -> Dict[str, Any]:
         self.load_model_for_comparation(models)
-        app = RouterDeployment.bind(self.compare_deployments, self.compare_model_configs)
+        app = RouterDeployment.bind(  # pylint:disable=no-member
+            self.compare_deployments, self.compare_model_configs)
         logger.info(self.compare_model_configs)
         ray._private.usage.usage_lib.record_library_usage("llmserve")
         prefix = "cmp_models"
@@ -911,41 +940,43 @@ class ApiServer:
         if name:
             prefix = prefix + "_" + name
             prefix_cmp = prefix_cmp + "_" + name
-        serve.run(app, host=CONFIG.SERVE_RUN_HOST, name = prefix, route_prefix="/" + prefix, _blocking = False)
-        
-        thread = threading.Thread(target=self.run_frontend,args=(prefix_cmp,prefix))
-        thread.daemon = True 
+        serve.run(app, host=CONFIG.SERVE_RUN_HOST, name=prefix,
+                  route_prefix="/" + prefix, _blocking=False)
+
+        thread = threading.Thread(
+            target=self.run_frontend, args=(prefix_cmp, prefix))
+        thread.daemon = True
         thread.start()
         # await self.run_frontend(prefix_cmp, prefix)
-        return {"url": CONFIG.URL + prefix_cmp , "models" : self.compare_model_configs, "ids" :[prefix, prefix_cmp]}
-    
-    
+        return {"url": CONFIG.URL + prefix_cmp, "models": self.compare_model_configs, "ids": [prefix, prefix_cmp]}
+
     @app.get("/models_comparation")
-    async def models_comparation(self)-> Dict[str, Any]:
+    async def models_comparation(self) -> Dict[str, Any]:
         text = []
-        
+
         for model in self.support_models:
             if model.model_config.model_task == "text-generation":
                 text.append(model.model_config.model_id)
         return {
-            "text-generation":text,
+            "text-generation": text,
         }
-    
+
     @app.get("/list_comparation")
-    async def list_comparation(self)-> List[Any]:     
-        deployments = self.list_deployment_from_ray(False)       
-                      
+    async def list_comparation(self) -> List[Any]:
+        deployments = self.list_deployment_from_ray(False)
+
         return deployments
-    
+
     @app.post("/delete_comparation")
     async def delete_app(self, names: List[str] = Body(..., description="model id or all", embed=True)) -> Dict[str, Any]:
         for name in names:
             if "all" in name or "All" in names:
-                serve_details = ServeInstanceDetails(**ServeSubmissionClient(CONFIG.RAY_AGENT_ADDRESS).get_serve_details())
+                serve_details = ServeInstanceDetails(
+                    **ServeSubmissionClient(CONFIG.RAY_AGENT_ADDRESS).get_serve_details())
                 for key, value in serve_details.applications.items():
                     if "cmp_" in key:
-                        serve.delete( key, _blocking = False)
+                        serve.delete(key, _blocking=False)
             else:
-                serve.delete("cmp_models_" + name, _blocking = False)
-                serve.delete("cmp_" + name, _blocking = False)      
-        return {"comparation":"Delete" + name + "Successful"}
+                serve.delete("cmp_models_" + name, _blocking=False)
+                serve.delete("cmp_" + name, _blocking=False)
+        return {"comparation": "Delete" + name + "Successful"}

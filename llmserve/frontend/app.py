@@ -47,6 +47,7 @@ from llmserve.frontend.utils import (
 
 std_logger = logging.getLogger("ray.serve")
 
+
 @ray.remote(num_cpus=0)
 def completions(bakend, prompt, llm, index):
     try:
@@ -54,7 +55,7 @@ def completions(bakend, prompt, llm, index):
     except Exception as e:
         if isinstance(e, requests.ReadTimeout) or (
             hasattr(e, "response")
-            and ("timeout" in e.response or e.response.status_code in (408, 504))
+            and ("timeout" in e.response or e.response.status_code in (408, 504))  # pylint:disable=no-member
         ):
             out = (
                 "[LLM-SERVE] The request timed out. This usually means the server "
@@ -72,16 +73,18 @@ def completions(bakend, prompt, llm, index):
         out = {"error": out}
     return out, index
 
+
 @serve.deployment()
 class LLMServeFrontend(GradioIngress):
     def __init__(self, url):
         # LLMServe deployment simply silences the unnecessary gradio info calls.
-        std_logger.setLevel(logging.ERROR)  
+        std_logger.setLevel(logging.ERROR)
         # Global Gradio variables
         # NOTE: In the context of Gradio "global" means shared between all sessions.
         self.BACKEND = get_llmserve_backend(url=url)
         self.ALL_MODELS = self.BACKEND.models()
-        self.ALL_MODELS_METADATA = {model: self.BACKEND.metadata(model) for model in self.ALL_MODELS}
+        self.ALL_MODELS_METADATA = {model: self.BACKEND.metadata(
+            model) for model in self.ALL_MODELS}
         self.MODEL_DESCRIPTIONS = (
             MODEL_DESCRIPTIONS_HEADER
             + "\n\n"
@@ -98,7 +101,8 @@ class LLMServeFrontend(GradioIngress):
         ).strip()
         self.LLM_VALUES = [None] * NUM_LLM_OPTIONS
         self.MONGODB_URL = get_mongo_secret_url()
-        self.LDR = Leaderboard(self.MONGODB_URL, PROJECT_NAME) if self.MONGODB_URL else DummyLeaderboard()
+        self.LDR = Leaderboard(
+            self.MONGODB_URL, PROJECT_NAME) if self.MONGODB_URL else DummyLeaderboard()
         self.LOGGER = LOGGER
 
         super().__init__(self.gradio_app_builder)
@@ -127,8 +131,8 @@ class LLMServeFrontend(GradioIngress):
 
             return [*text_output, *stats, "", outs]
         except Exception as e:
-            raise gr.Error(f"An error occurred. Please try again.\nError: {e}") from e
-
+            raise gr.Error(
+                f"An error occurred. Please try again.\nError: {e}") from e
 
     def show_results(self, buttons, llm_text_boxes, llm_stats):
         for i in range(NUM_LLM_OPTIONS):
@@ -145,8 +149,8 @@ class LLMServeFrontend(GradioIngress):
                     llm_text_boxes[i] = gr.Markdown(
                         elem_classes="output-text",
                     )
-                    llm_stats[i] = gr.Markdown(DEFAULT_STATS, elem_classes="output-stats")
-
+                    llm_stats[i] = gr.Markdown(
+                        DEFAULT_STATS, elem_classes="output-stats")
 
     def show_examples(self, prompt):
         with gr.Column(elem_id="prompt-examples-column"):
@@ -169,8 +173,7 @@ class LLMServeFrontend(GradioIngress):
                 label="Examples (Story Telling)",
             )
 
-
-    def update_selection(self,button, choice_1, choice_2, choice_3):
+    def update_selection(self, button, choice_1, choice_2, choice_3):
         llm_choices = [choice_1, choice_2, choice_3]
         for i in range(NUM_LLM_OPTIONS):
             if button != "\U0001f3b2 Random":
@@ -181,7 +184,8 @@ class LLMServeFrontend(GradioIngress):
 
     def model_selection(self) -> List[Any]:
         with gr.Row(elem_id="model-dropdpown-row"):
-            model_list = [x for _, x in sorted(zip(MODELS.keys(), self.ALL_MODELS))]
+            model_list = [x for _, x in sorted(
+                zip(MODELS.keys(), self.ALL_MODELS))]
             llm_choices = [
                 gr.Dropdown(
                     choices=self.ALL_MODELS,
@@ -260,7 +264,8 @@ class LLMServeFrontend(GradioIngress):
                         #     elem_classes="ticker-container",
                         # )
                         llm_choices = self.model_selection()
-                        prompt = gr.TextArea(label="Prompt", lines=5, elem_id="prompt")
+                        prompt = gr.TextArea(
+                            label="Prompt", lines=5, elem_id="prompt")
                         with gr.Row():
                             clr = gr.Button(
                                 value="Clear",
@@ -322,24 +327,28 @@ class LLMServeFrontend(GradioIngress):
                 return [prompt, model1, model2, model3, unused_raw];
             }
             """
+
             def log_flagss(*args):
                 self.LOGGER.flag(args)
 
             submit_btn.click(
                 fn=self.do_query,
                 inputs=inputs + [raw_completions],
-                outputs=llm_text_boxes + llm_stats + [last_btn, raw_completions],
+                outputs=llm_text_boxes + llm_stats +
+                [last_btn, raw_completions],
                 _js=onSubmitClick,
             ).then(
                 fn=log_flagss,
-                inputs=inputs + llm_text_boxes + [last_btn, raw_completions, session_id],
+                inputs=inputs + llm_text_boxes +
+                [last_btn, raw_completions, session_id],
             ).then(
                 fn=unset_buttons, outputs=btns
             )
 
             for i in range(NUM_LLM_OPTIONS):
                 btns[i].click(
-                    fn=select_button, inputs=btns[i], outputs=[last_btn, btns[i]]
+                    fn=select_button, inputs=btns[i], outputs=[
+                        last_btn, btns[i]]
                 ).then(fn=deactivate_buttons, outputs=btns).then(
                     lambda *args: paused_logger(args),
                     inputs=inputs
@@ -352,7 +361,9 @@ class LLMServeFrontend(GradioIngress):
                 )
             return demo
 
+
 if __name__ == "__main__":
     ray.init(ignore_reinit_error=True)
-    app = LLMServeFrontend.options(ray_actor_options={"num_cpus": 1}, name="LLMServeFrontend").bind("http://127.0.0.1:8000/cmp_models_default")
+    app = LLMServeFrontend.options(ray_actor_options={"num_cpus": 1}, name="LLMServeFrontend").bind(  # pylint:disable=no-member
+        "http://127.0.0.1:8000/cmp_models_default")
     app.gradio_app_builder().launch(show_error=True)

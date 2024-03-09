@@ -8,7 +8,7 @@ import requests
 from llmserve.common.constants import TIMEOUT
 from llmserve.backend.logger import get_logger
 # from llmserve.backend.server.utils import get_serve_port
-from ray.serve._private.constants import ( DEFAULT_HTTP_PORT )
+from ray.serve._private.constants import (DEFAULT_HTTP_PORT)
 from llmserve.common.utils import _replace_prefix, _reverse_prefix
 
 
@@ -17,8 +17,10 @@ class BackendError(RuntimeError):
         self.response = kwargs.pop("response", None)
         super().__init__(*args)
 
+
 logger = get_logger(__name__)
 # logger = logging.getLogger("ray.serve")
+
 
 def get_llmserve_backend(host: str = "127.0.0.1", port: int = DEFAULT_HTTP_PORT, url: str = "/models"):
     """
@@ -43,7 +45,7 @@ def get_llmserve_backend(host: str = "127.0.0.1", port: int = DEFAULT_HTTP_PORT,
     #     connect_port = serve_runtime_port
     # else:
     #     raise ValueError(f"API service is not ready")
-    
+
     # llmserve_url = url
     llmserve_url = "http://" + host + ":" + str(connect_port) + url
     # logger.info(f"connect api url '{llmserve_url}'")

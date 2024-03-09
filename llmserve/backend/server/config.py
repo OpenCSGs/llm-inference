@@ -4,7 +4,7 @@ import os
 
 
 LLMTEMPLATE_DEPLOYMENT_CONFIG = {
-    "autoscaling_config":{
+    "autoscaling_config": {
         "min_replicas": 0,
         "initial_replicas": 1,
         "max_replicas": 8,
@@ -16,7 +16,7 @@ LLMTEMPLATE_DEPLOYMENT_CONFIG = {
         "upscale_delay_s": 90.0,
     },
     "ray_actor_options": {
-        "num_cpus": 0.1  
+        "num_cpus": 0.1
     }
 }
 LLMTEMPLATE_MODEL_CONFIG_COMPARATION = {
@@ -27,20 +27,20 @@ LLMTEMPLATE_MODEL_CONFIG_COMPARATION = {
     "initialization": {
         "runtime_env": {
         },
-        "initializer":{
+        "initializer": {
             "type": "SingleDevice",
             "dtype": "float32",
-            "from_pretrained_kwargs":{
-                "use_cache": True ,
+            "from_pretrained_kwargs": {
+                "use_cache": True,
                 "trust_remote_code": True
             }
-            
+
         },
         "pipeline": "default"
     },
-    "generation":{
+    "generation": {
         "max_batch_size": 18,
-        "generate_kwargs":{
+        "generate_kwargs": {
             "do_sample": True,
             "max_new_tokens": 128,
             "min_new_tokens": 16,
@@ -48,10 +48,10 @@ LLMTEMPLATE_MODEL_CONFIG_COMPARATION = {
             "repetition_penalty": 1.1,
             "top_p": 0.8,
             "top_k": 50,
-        },             
+        },
         "prompt_format": "Below is an instruction that describes a task. Write a response that appropriately completes the request.\n### Instruction:\n{instruction}\n### Response:\n",
         "stopping_sequences": ["### Response:", "### End"]
-    }                            
+    }
 }
 
 # TODO defaulttransformers leverage transformer pipeline to load the model, it's a problem, since some model cannot load by pipeline
@@ -63,21 +63,21 @@ LLMTEMPLATE_MODEL_CONFIG_EXPERIMENTAL = {
     "initialization": {
         "runtime_env": {
         },
-        "initializer":{
+        "initializer": {
             "type": "TransformersPipeline",
             "dtype": "float32",
             "use_fast": False,
-            "from_pretrained_kwargs":{
-                "use_cache": True ,
+            "from_pretrained_kwargs": {
+                "use_cache": True,
                 "trust_remote_code": True
             }
-            
+
         },
         "pipeline": "defaulttransformers"
     },
-    "generation":{
+    "generation": {
         "max_batch_size": 18,
-        "generate_kwargs":{
+        "generate_kwargs": {
             "do_sample": True,
             "max_new_tokens": 128,
             "min_new_tokens": 16,
@@ -85,25 +85,27 @@ LLMTEMPLATE_MODEL_CONFIG_EXPERIMENTAL = {
             "repetition_penalty": 1.1,
             "top_p": 0.8,
             "top_k": 50,
-        },             
+        },
         "prompt_format": "Below is an instruction that describes a task. Write a response that appropriately completes the request.\n### Instruction:\n{instruction}\n### Response:\n",
         "stopping_sequences": ["### Response:", "### End"]
-    }                            
+    }
 }
 
 
 LLMTEMPLATE_SCALE_CONFIG = {
-    "num_workers":1, 
-    "num_gpus_per_worker":0.0, 
-    "num_cpus_per_worker":1.0, 
-    "placement_strategy":'PACK', 
-    "resources_per_worker":None, 
-    "pg_timeout_s":600
+    "num_workers": 1,
+    "num_gpus_per_worker": 0.0,
+    "num_cpus_per_worker": 1.0,
+    "placement_strategy": 'PACK',
+    "resources_per_worker": None,
+    "pg_timeout_s": 600
 }
-EXPERIMENTAL_LLMTEMPLATE = LLMApp(scaling_config=LLMTEMPLATE_SCALE_CONFIG.copy(),model_config=LLMTEMPLATE_MODEL_CONFIG_EXPERIMENTAL.copy())
+EXPERIMENTAL_LLMTEMPLATE = LLMApp(scaling_config=LLMTEMPLATE_SCALE_CONFIG.copy(
+), model_config=LLMTEMPLATE_MODEL_CONFIG_EXPERIMENTAL.copy())
 EXPERIMENTAL_LLMTEMPLATE.deployment_config = LLMTEMPLATE_DEPLOYMENT_CONFIG.copy()
 
-COMPARATION_LLMTEMPLATE = LLMApp(scaling_config=LLMTEMPLATE_SCALE_CONFIG.copy(),model_config=LLMTEMPLATE_MODEL_CONFIG_COMPARATION.copy())
+COMPARATION_LLMTEMPLATE = LLMApp(scaling_config=LLMTEMPLATE_SCALE_CONFIG.copy(
+), model_config=LLMTEMPLATE_MODEL_CONFIG_COMPARATION.copy())
 COMPARATION_LLMTEMPLATE.deployment_config = LLMTEMPLATE_DEPLOYMENT_CONFIG.copy()
 
 RAY_AGENT_ADDRESS = "http://localhost:52365"
@@ -133,4 +135,3 @@ MODELS_MAPPING = {
 
 SERVE_RUN_HOST = "0.0.0.0"
 URL = "http://127.0.0.1:8000/"
-

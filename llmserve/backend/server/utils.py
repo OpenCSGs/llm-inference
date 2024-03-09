@@ -7,9 +7,10 @@ from llmserve.backend.server.models import LLMApp
 import gradio as gr
 from ray.serve.context import _get_global_client
 from ray.serve.exceptions import RayServeException
-from ray.serve._private.constants import ( SERVE_NAMESPACE )
+from ray.serve._private.constants import (SERVE_NAMESPACE)
 
 logger = get_logger(__name__)
+
 
 def parse_args(args: Union[str, LLMApp, List[Union[LLMApp, str]]]) -> List[LLMApp]:
     """Parse the input args and return a standardized list of LLMApp objects
@@ -27,7 +28,7 @@ def parse_args(args: Union[str, LLMApp, List[Union[LLMApp, str]]]) -> List[LLMAp
         raw_models = args
     else:
         raw_models = [args]
-    
+
     logger.info(f"Parsing model args {raw_models}")
     # For each
     models: List[LLMApp] = []
@@ -55,12 +56,12 @@ def _parse_path_args(path: str, isFt: bool) -> List[LLMApp]:
         for root, _dirs, files in os.walk(path):
             for p in files:
                 if not isFt:
-                    if p.startswith("ft-" ):
-                        continue 
+                    if p.startswith("ft-"):
+                        continue
                 if _is_yaml_file(p):
                     with open(os.path.join(root, p), "r") as f:
                         logger.info(f"Found model file {f.name}")
-                        apps.append(LLMApp.parse_yaml(f))                 
+                        apps.append(LLMApp.parse_yaml(f))
         return apps
     else:
         file_name = CONFIG.MODELS_MAPPING.get(path)
@@ -79,6 +80,7 @@ def _is_yaml_file(filename: str) -> bool:
         if filename.endswith(s):
             return True
     return False
+
 
 def render_gradio_params(hg_task: str) -> Dict[str, Any]:
     # customize gradio by hg task
@@ -167,7 +169,7 @@ def render_gradio_params(hg_task: str) -> Dict[str, Any]:
             "preprocess": lambda x: [x],
             "postprocess": lambda r: {i["label"].split(", ")[0]: i["score"] for i in r},
             "warmup": "Hello, my dog is cute",
-            
+
         }
     elif hg_task == "text-generation":
         pipeline_info = {
@@ -197,7 +199,8 @@ def render_gradio_params(hg_task: str) -> Dict[str, Any]:
         pipeline_info = {
             "inputs": [
                 gr.components.Textbox(label="Input"),
-                gr.components.Textbox(label="Possible class names (" "comma-separated)"),
+                gr.components.Textbox(
+                    label="Possible class names (" "comma-separated)"),
                 gr.components.Checkbox(label="Allow multiple true classes"),
             ],
             "outputs": gr.components.Label(label="Classification"),
@@ -240,8 +243,9 @@ def render_gradio_params(hg_task: str) -> Dict[str, Any]:
         }
     else:
         raise ValueError(f"Unsupported task type: {hg_task}")
-    
+
     return pipeline_info
+
 
 def get_serve_port() -> int:
     try:

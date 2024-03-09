@@ -22,7 +22,8 @@ class StopOnTokens(StoppingCriteria):
     def __init__(self, stopping_sequences: List[Union[List[int], int]]) -> None:
         self.stopping_sequences = stopping_sequences
         self.stop_ids = [
-            torch.LongTensor([stop_id] if not isinstance(stop_id, list) else stop_id)
+            torch.LongTensor([stop_id] if not isinstance(
+                stop_id, list) else stop_id)
             for stop_id in self.stopping_sequences
         ]
         self.first_stopping_token_in_batch = {}
@@ -33,10 +34,11 @@ class StopOnTokens(StoppingCriteria):
         for batch_index, batch in enumerate(input_ids):
             if batch_index not in self.first_stopping_token_in_batch:
                 for stop_id in self.stop_ids:
-                    if len(batch) > len(stop_id) and batch[-len(stop_id) :].equal(
+                    if len(batch) > len(stop_id) and batch[-len(stop_id):].equal(
                         stop_id.to(batch.device)
                     ):
-                        self.first_stopping_token_in_batch[batch_index] = len(batch) - 1
+                        self.first_stopping_token_in_batch[batch_index] = len(
+                            batch) - 1
                         break
         return len(self.first_stopping_token_in_batch) == len(input_ids)
 
@@ -59,7 +61,8 @@ class StopOnTokensLogitsProcessor(LogitsProcessor):
             eos_token_id = [eos_token_id]
         self.eos_token_id = eos_token_id
         self.stop_ids = [
-            torch.LongTensor([stop_id] if not isinstance(stop_id, list) else stop_id)
+            torch.LongTensor([stop_id] if not isinstance(
+                stop_id, list) else stop_id)
             for stop_id in stopping_sequences
         ]
         self._stopped_batches = set()
@@ -71,7 +74,7 @@ class StopOnTokensLogitsProcessor(LogitsProcessor):
         for batch_index, batch in enumerate(input_ids):
             if batch_index not in self._stopped_batches:
                 for stop_id in self.stop_ids:
-                    if len(batch) > len(stop_id) and batch[-len(stop_id) :].equal(
+                    if len(batch) > len(stop_id) and batch[-len(stop_id):].equal(
                         stop_id.to(batch.device)
                     ):
                         self._stopped_batches.add(batch_index)

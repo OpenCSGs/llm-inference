@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod, abstractproperty
 
+
 class ErrorReason(ABC):
     @abstractmethod
     def get_message(self) -> str:
@@ -15,12 +16,15 @@ class ErrorReason(ABC):
     def raise_exception(self) -> Exception:
         raise self.exception
 
+
 class ValidationError(ValueError):
     status_code = 400
     pass
 
+
 class TooManyStoppingSequencesError(ValidationError):
     pass
+
 
 class TooManyStoppingSequences(ErrorReason):
     def __init__(
