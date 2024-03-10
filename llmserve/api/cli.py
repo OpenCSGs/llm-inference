@@ -13,7 +13,6 @@ from llmserve.api import sdk
 app = typer.Typer(add_completion=False)
 
 model_type = typer.Option(default=..., help="The model to use. You can specify multiple models.")
-ft_define = typer.Option(default=..., help="the fine tune define")
 app_name_type = typer.Option(default=..., help="The name of ray serve application.")
 host_type = typer.Option(default=..., help="The host ip address of api serivce.")
 port_type = typer.Option(default=...,help="The port of service.")
@@ -131,14 +130,6 @@ def experimental(
     """
     sdk.run_experimental(model = model, appname = appname, port = port)
 
-#@start_app.command()
-#def finetune(ft: Annotated[str, ft_define]):
-#    """Start a fine tune process.
-#
-#    Args:
-#        *model: The model to run.
-#    """
-#    sdk.run_ft(ft)
 
 @start_app.command()
 def comparation():

@@ -6,11 +6,10 @@ from ray import serve
 
 from llmserve.backend.server.app import LLMDeployment, RouterDeployment, ExperimentalDeployment, ApiServer
 # from llmserve.backend.server.app import ApplicationDeployment
-from llmserve.backend.server.models import LLMApp, ServeArgs, FTApp
-from llmserve.backend.server.utils import parse_args, parse_args_ft, get_serve_port
+from llmserve.backend.server.models import LLMApp, ServeArgs
+from llmserve.backend.server.utils import parse_args, get_serve_port
 import uuid
 import os
-from llmserve.backend.llm.ft import TransformersFT
 from llmserve.backend.logger import get_logger
 from ray.serve._private.constants import ( DEFAULT_HTTP_PORT )
 from llmserve.common.utils import _replace_prefix, _reverse_prefix
@@ -198,30 +197,6 @@ def start_apiserver(port: int = DEFAULT_HTTP_PORT):
     logger.info(f"Serve 'apiserver' is running at {SERVE_RUN_HOST}/{serve_start_port}")
     serve.run(app, name="apiserver", route_prefix="/api")
 
-def run_ft(ft: Union[FTApp, str]):
-    """Run the LLM Server on the local Ray Cluster
-
-    Args:
-        model: A LLMApp objects or paths to yaml files defining LLMApps
-
-    Example:
-       run("models/model.yaml") # run one model in the model directory
-       run(FTApp)         # run a single LLMApp
-    """
-
-    ft = parse_args_ft(ft)
-    if not ft:
-        raise RuntimeError("No valiabled fine tune defination were found.")
-    
-    if isinstance(ft, FTApp):
-        logger.info(f"Initialized a Finetune instance of FTApp {ft.json(indent=2)}")
-    else:
-        raise RuntimeError("Not a Finetune App were found.")
-    
-    ray._private.usage.usage_lib.record_library_usage("llmserve")
-
-    runner = TransformersFT(ft)
-    runner.train()
     
 def run_comparation():
     """Run the LLM Server on the local Ray Cluster

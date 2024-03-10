@@ -210,18 +210,6 @@ def run_application(flow: dict) -> None:
 
     run_application(flow)
 
-def run_ft(ft: str) -> None:
-    """Run LLMServe on the local ray cluster
-
-    NOTE: This only works if you are running this command
-    on the Ray or Anyscale cluster directly. It does not
-    work from a general machine which only has the url and token
-    for a model.
-    """
-    assert_has_backend()
-    from llmserve.backend.server.run import run_ft
-
-    run_ft(ft)
 
 def run_comparation() -> None:
     """Run LLMServe on the local ray cluster

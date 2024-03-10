@@ -3,7 +3,7 @@ from typing import List, Union, Dict, Any
 
 from llmserve.backend.logger import get_logger
 import llmserve.backend.server.config as CONFIG
-from llmserve.backend.server.models import LLMApp, FTApp
+from llmserve.backend.server.models import LLMApp
 import gradio as gr
 from ray.serve.context import _get_global_client
 from ray.serve.exceptions import RayServeException
@@ -71,37 +71,6 @@ def _parse_path_args(path: str, isFt: bool) -> List[LLMApp]:
             raise ValueError(
                 f"Could not load model from directory <./models/>"
             )
-
-def parse_args_ft(args: Union[str, FTApp]) -> FTApp:
-    """Parse the input args and return a standardized list of LLMApp objects
-
-    Supported args format:
-    1. The path to a yaml file defining your LLMApp
-    2. The path to a folder containing yaml files, which define your LLMApps
-    2. A list of yaml files defining multiple LLMApps
-    3. A dict or LLMApp object
-    4. A list of dicts or LLMApp objects
-
-    """
-    if isinstance(args, str):
-        parsed_ft = _parse_path_args_ft(args)
-    else:
-        parsed_ft = FTApp.parse_obj(args)
-
-    return parsed_ft
-
-
-def _parse_path_args_ft(path: str) -> FTApp:
-    assert os.path.exists(
-        path
-    ), f"Could not load model from {path}, as it does not exist."
-    if os.path.isfile(path):
-        with open(path, "r") as f:
-            return FTApp.parse_yaml(f)
-    else:
-        raise ValueError(
-            f"Could not load model from {path}, as it is not a file or directory."
-        )
 
 
 def _is_yaml_file(filename: str) -> bool:
