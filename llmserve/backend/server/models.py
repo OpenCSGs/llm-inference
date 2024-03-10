@@ -533,13 +533,4 @@ class TrainConfig(BaseModelExtended):
         """
         return self.dict(exclude={"per_device_eval_batch_size"})
 
-class FTConfig(BaseModelExtended):
-    ft_task: Optional[str] = None
-    data_config: Optional[DataConfig] = None
-    train_config: TrainConfig
-
-
-class FTApp(Args):
-    ft_config: FTConfig
-    enabled: bool = True
 
