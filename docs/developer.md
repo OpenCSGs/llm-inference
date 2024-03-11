@@ -101,7 +101,15 @@ llm-serve start apiserver
 
 ## Running unit/integration tests
 
-Comming soon.
+Before commit your changes, ensure the pylint test is passed.
+
+```
+$ pylint --rcfile=tests/pylint.conf $(git ls-files '*.py')
+
+-------------------------------------------------------------------
+Your code has been rated at 10.00/10 (previous run: 6.02/10, +3.98)
+
+```
 
 ## Contribute to the code 
 

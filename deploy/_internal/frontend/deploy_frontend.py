@@ -1,7 +1,7 @@
 import os
 from typing import Optional
 
-from util import (
+from ..util import (
     Config,
     _create_cluster_compute,
     _create_cluster_env,

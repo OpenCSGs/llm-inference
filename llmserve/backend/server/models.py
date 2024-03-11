@@ -15,6 +15,7 @@ from llmserve.backend.logger import get_logger
 
 logger = get_logger(__name__)
 
+
 def markdown_extract_first_paragraph(markdown_text: str):
     """Extract the first paragraph from a markdown-formatted string."""
     md = MarkdownIt("commonmark", {"breaks": True, "html": True}).use(
@@ -196,8 +197,8 @@ class Initializer(BaseModelExtended, extra=Extra.forbid):
     type: str
 
     @root_validator(pre=True)
-    def set_type(cls, values):
-        values["type"] = cls.__name__
+    def set_type(cls, values):  # pylint:disable=no-self-argument
+        values["type"] = cls.__name__  # pylint:disable=no-member
         return values
 
     def get_initializer_kwargs(self) -> dict:
@@ -242,7 +243,7 @@ class DeepSpeed(Transformers):
     ds_inference_kwargs: Optional[Dict[str, Any]] = None
 
     @root_validator
-    def use_kernel_bettertransformer_torch_compile(cls, values):
+    def use_kernel_bettertransformer_torch_compile(cls, values):  # pylint:disable=no-self-argument
         if values.get("use_kernel") and (
             values.get("use_bettertransformer") or values.get("torch_compile")
         ):
@@ -252,7 +253,7 @@ class DeepSpeed(Transformers):
         return values
 
     @root_validator
-    def use_kernel_use_meta_tensor(cls, values):
+    def use_kernel_use_meta_tensor(cls, values):  # pylint:disable=no-self-argument
         if not values.get("use_kernel") and values.get("use_meta_tensor"):
             raise ValueError("'use_meta_tensor=True' needs 'use_kernel=True'.")
         return values
@@ -265,6 +266,7 @@ class DeviceMap(Transformers):
 
 class SingleDevice(Transformers):
     type: Literal["SingleDevice"]
+
 
 class LlamaCpp(Initializer):
     type: Literal["LlamaCpp"]
@@ -279,7 +281,8 @@ class LlamaCpp(Initializer):
 
     @property
     def allowed_pipelines(self) -> Set[str]:
-        return {"llamacpp"}     
+        return {"llamacpp"}
+
 
 class TransformersPipeline(Initializer):
     type: Literal["TransformersPipeline"]
@@ -290,7 +293,7 @@ class TransformersPipeline(Initializer):
     @property
     def torch_dtype(self) -> torch.dtype:
         return getattr(torch, self.dtype)
-    
+
     def get_initializer_kwargs(self) -> dict:
         return {
             **self.dict(exclude={"type", "from_pretrained_kwargs", "dtype"}),
@@ -300,7 +303,7 @@ class TransformersPipeline(Initializer):
 
     @property
     def allowed_pipelines(self) -> Set[str]:
-        return {"defaulttransformers"}   
+        return {"defaulttransformers"}
 
 
 class Vllm(Initializer):
@@ -315,15 +318,15 @@ class Vllm(Initializer):
 
     @property
     def allowed_pipelines(self) -> Set[str]:
-        return {"vllm"}  
-    
+        return {"vllm"}
+
 
 class Finetune(Transformers):
     type: Literal["Finetune"]
 
+
 class AutoModel(Transformers):
     type: Literal["AutoModel"]
-
 
 
 class S3MirrorConfig(BaseModelExtended):
@@ -335,15 +338,17 @@ class S3MirrorConfig(BaseModelExtended):
 
 class InitializationConfig(BaseModelExtended):
     initializer: Annotated[
-        Union[DeepSpeed, DeviceMap, SingleDevice, Finetune, AutoModel, LlamaCpp, TransformersPipeline, Vllm], Field(discriminator="type")
+        Union[DeepSpeed, DeviceMap, SingleDevice, Finetune, AutoModel,
+              LlamaCpp, TransformersPipeline, Vllm], Field(discriminator="type")
     ]
-    pipeline: Union[Literal["default"], Literal["defaulttransformers"], Literal["llamacpp"], Literal["vllm"]] = None
+    pipeline: Union[Literal["default"], Literal["defaulttransformers"],
+                    Literal["llamacpp"], Literal["vllm"]] = None
     s3_mirror_config: Optional[S3MirrorConfig] = None
     runtime_env: Optional[Dict[str, Any]] = None
     hf_model_id: Optional[str] = None
 
     @root_validator
-    def initializer_pipeline(cls, values):
+    def initializer_pipeline(cls, values):  # pylint:disable=no-self-argument
         # logger.info(f"initializer_pipeline: ${values}")
         pipeline = values.get("pipeline")
         if pipeline:
@@ -367,11 +372,12 @@ class GenerationConfig(BaseModelExtended):
         "top_p": 0.92,
         "top_k": 0,
     }
-    stopping_sequences: Optional[List[Union[str, int, List[Union[str, int]]]]] = None
+    stopping_sequences: Optional[List[Union[str,
+                                            int, List[Union[str, int]]]]] = None
     add_special_tokens: Dict[str, Any] = None
 
     @validator("prompt_format")
-    def check_prompt_format(cls, value):
+    def check_prompt_format(cls, value):  # pylint:disable=no-self-argument
         if value:
             assert (
                 "{instruction}" in value
@@ -379,7 +385,7 @@ class GenerationConfig(BaseModelExtended):
         return value
 
     @validator("stopping_sequences")
-    def check_stopping_sequences(cls, value):
+    def check_stopping_sequences(cls, value):  # pylint:disable=no-self-argument
         def try_int(x):
             if isinstance(x, list):
                 return [try_int(y) for y in x]
@@ -412,7 +418,7 @@ class LLMConfig(BaseModelExtended):
     max_input_words: int = 400
 
     @root_validator(pre=True)
-    def resolve_model_url_and_description(cls, values):
+    def resolve_model_url_and_description(cls, values):  # pylint:disable=no-self-argument
         model_id = values.get("model_id")
         model_url = values.get("model_url")
         model_description = values.get("model_description")
@@ -431,7 +437,8 @@ class LLMConfig(BaseModelExtended):
                 readme = hf_hub_download(model_id, "README.md")
                 assert readme
                 with open(readme, "r") as f:
-                    model_description = markdown_extract_first_paragraph(f.read())
+                    model_description = markdown_extract_first_paragraph(
+                        f.read())
             except Exception:
                 model_description = ""
             values["model_description"] = model_description
@@ -441,10 +448,12 @@ class LLMConfig(BaseModelExtended):
     def actual_hf_model_id(self) -> str:
         return self.initialization.hf_model_id or self.model_id
 
+
 class Scaling_Config_Simple(BaseModelExtended):
     num_workers: int
     num_gpus_per_worker: float = 1
     num_cpus_per_worker: float = 1
+
 
 class ScalingConfig(BaseModelExtended):
     num_workers: int
@@ -493,6 +502,7 @@ class LLMApp(Args):
 class ServeArgs(BaseModel):
     models: Union[str, LLMApp, List[Union[str, LLMApp]]]
 
+
 class DataConfig(BaseModelExtended):
     data_path: str
     subset: str = None
@@ -509,17 +519,26 @@ class DataConfig(BaseModelExtended):
 
 
 class TrainConfig(BaseModelExtended):
-    max_length: int = 128 # The maximum total input sequence length after tokenization. "Sequences longer than this will be truncated, sequences shorter will be padded if `--pad_to_max_lengh` is passed.
-    pad_to_max_length: bool = False # If passed, pad all samples to `max_length`. Otherwise, dynamic padding is used.
-    per_device_train_batch_size: int = 8 # Batch size (per device) for the training dataloader.
-    per_device_eval_batch_size: int = 8 # Batch size (per device) for the evaluation dataloader.
-    learning_rate: float = 5e-5 # Initial learning rate (after the potential warmup period) to use.
-    weight_decay: float = 0.0 # Weight decay to use.
-    num_train_epochs: int = 3 # Total number of training epochs to perform.
-    max_train_steps: int = None # Total number of training steps to perform. If provided, overrides num_train_epochs.
-    gradient_accumulation_steps: int = 1 # Number of updates steps to accumulate before performing a backward/update pass.
-    lr_scheduler_type: SchedulerType = SchedulerType.LINEAR # The scheduler type to use. "linear", "cosine", "cosine_with_restarts", "polynomial", "constant", "constant_with_warmup"
-    num_warmup_steps: int = 0  # Number of steps for the warmup in the lr scheduler.
+    # The maximum total input sequence length after tokenization. "Sequences longer than this will be truncated, sequences shorter will be padded if `--pad_to_max_lengh` is passed.
+    max_length: int = 128
+    # If passed, pad all samples to `max_length`. Otherwise, dynamic padding is used.
+    pad_to_max_length: bool = False
+    # Batch size (per device) for the training dataloader.
+    per_device_train_batch_size: int = 8
+    # Batch size (per device) for the evaluation dataloader.
+    per_device_eval_batch_size: int = 8
+    # Initial learning rate (after the potential warmup period) to use.
+    learning_rate: float = 5e-5
+    weight_decay: float = 0.0  # Weight decay to use.
+    num_train_epochs: int = 3  # Total number of training epochs to perform.
+    # Total number of training steps to perform. If provided, overrides num_train_epochs.
+    max_train_steps: int = None
+    # Number of updates steps to accumulate before performing a backward/update pass.
+    gradient_accumulation_steps: int = 1
+    # The scheduler type to use. "linear", "cosine", "cosine_with_restarts", "polynomial", "constant", "constant_with_warmup"
+    lr_scheduler_type: SchedulerType = SchedulerType.LINEAR
+    # Number of steps for the warmup in the lr scheduler.
+    num_warmup_steps: int = 0
     remove_unused_columns: bool = True
     evaluation_strategy: str = "epoch"
     save_strategy: str = "epoch"

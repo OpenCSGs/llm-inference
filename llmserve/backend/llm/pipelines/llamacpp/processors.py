@@ -14,9 +14,10 @@ class LlamaCppMinNewTokensLengthLogitsProcessor(
 ):
     def __call__(self, input_ids: List[int], scores: List[float]) -> List[float]:
         scores = MinNewTokensLengthLogitsProcessor.__call__(
-            self, torch.LongTensor(input_ids), torch.FloatTensor(scores)[None, :]
+            self, torch.LongTensor(
+                input_ids), torch.FloatTensor(scores)[None, :]
         )
-        return scores[0].tolist()
+        return scores[0].tolist()  # pylint:disable=unsubscriptable-object
 
 
 class LlamaMaxTimeCriteria(MaxTimeCriteria, StoppingCriteria):

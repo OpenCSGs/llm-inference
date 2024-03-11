@@ -2,6 +2,7 @@
 from enum import Enum
 from typing import Optional
 
+
 class FinishReason(str, Enum):
     LENGTH = "length"
     STOP = "stop"

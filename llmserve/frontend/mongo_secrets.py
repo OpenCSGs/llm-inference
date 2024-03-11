@@ -20,9 +20,11 @@ def get_mongo_secret_url():
 
         # Create a Secrets Manager client
         session = boto3.session.Session()
-        client = session.client(service_name="secretsmanager", region_name=region_name)
+        client = session.client(
+            service_name="secretsmanager", region_name=region_name)
 
-        get_secret_value_response = client.get_secret_value(SecretId=secret_name)
+        get_secret_value_response = client.get_secret_value(
+            SecretId=secret_name)
 
         # Decrypts secret using the associated KMS key.
         secret = get_secret_value_response["SecretString"]

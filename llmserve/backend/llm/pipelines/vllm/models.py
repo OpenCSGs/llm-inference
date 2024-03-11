@@ -6,6 +6,8 @@ from llmserve.backend.server.models import BaseModelExtended
 
 ModelT = TypeVar("ModelT", bound=BaseModel)
 MAX_NUM_STOPPING_SEQUENCES = os.getenv("MAX_NUM_STOPPING_SEQUENCES", 8)
+
+
 class SamplingParams(BaseModelExtended):
     """
     Args:
@@ -56,7 +58,7 @@ class SamplingParams(BaseModelExtended):
         return super().dict(**kwargs)
 
     @validator("stop", always=True)
-    def validate_stopping_sequences(cls, values):
+    def validate_stopping_sequences(cls, values):  # pylint: disable=no-self-argument
         if not values:
             return values
 
@@ -91,7 +93,7 @@ class SamplingParams(BaseModelExtended):
             #         base[key] = value
 
             return base
-        
+
         # Merge in the generate kwargs
         generate_kwargs = _merge_dicts(
             [],
@@ -107,6 +109,7 @@ class SamplingParams(BaseModelExtended):
         # )
         generate_kwargs["stop"] = []
         return cls.parse_obj(generate_kwargs)
+
 
 class VLLMSamplingParams(SamplingParams):
     """

@@ -1,7 +1,7 @@
 import typer
-from backend.deploy_backend import BackendController
-from frontend.deploy_frontend import FrontendController
-from util import Config, _get_service_hostname_and_token
+from .backend.deploy_backend import BackendController
+from .frontend.deploy_frontend import FrontendController
+from .util import Config, _get_service_hostname_and_token
 
 app = typer.Typer()
 

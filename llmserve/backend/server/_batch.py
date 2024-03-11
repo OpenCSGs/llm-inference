@@ -91,7 +91,8 @@ class _PriorityBatchQueue(_BatchQueue):
                 background to handle batches if provided.
         """
         super().__init__(max_batch_size, timeout_s, handle_batch_func)
-        self.queue: PriorityQueueWithUnwrap[_SingleRequest] = PriorityQueueWithUnwrap()
+        self.queue: PriorityQueueWithUnwrap[_SingleRequest] = PriorityQueueWithUnwrap(
+        )
 
     def put(
         self,
@@ -178,7 +179,8 @@ def batch(
             )
 
         if not iscoroutinefunction(_func):
-            raise TypeError("Functions decorated with @serve.batch must be 'async def'")
+            raise TypeError(
+                "Functions decorated with @serve.batch must be 'async def'")
 
     if not callable(max_batch_size):
         _validate_max_batch_size(max_batch_size)
@@ -194,7 +196,8 @@ def batch(
             if priority_kwarg:
                 priority_kwargs = {priority_kwarg: kwargs.pop(priority_kwarg)}
             self = extract_self_if_method_call(args, _func)
-            flattened_args: List = flatten_args(extract_signature(_func), args, kwargs)
+            flattened_args: List = flatten_args(
+                extract_signature(_func), args, kwargs)
 
             if self is None:
                 # For functions, inject the batch queue as an
@@ -225,7 +228,8 @@ def batch(
                 batch_queue.max_batch_size = new_max_batch_size
 
             if callable(batch_wait_timeout_s):
-                new_batch_wait_timeout_s = batch_wait_timeout_s(batch_queue_object)
+                new_batch_wait_timeout_s = batch_wait_timeout_s(
+                    batch_queue_object)
                 _validate_batch_wait_timeout_s(new_batch_wait_timeout_s)
                 batch_queue.timeout_s = new_batch_wait_timeout_s
 

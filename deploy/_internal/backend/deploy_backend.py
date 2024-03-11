@@ -1,12 +1,11 @@
 import os
 
-from util import (
+from ..util import (
     Config,
     _create_cluster_compute,
     _create_cluster_env,
     _rollout,
 )
-
 
 class BackendController:
     def __init__(self, config: Config):
@@ -26,7 +25,8 @@ class BackendController:
         self.cc_path = os.path.join(self.deploy_dir, self.cc_filename)
         self.ce_path = os.path.join(self.deploy_dir, "cluster-env.yaml")
         self.service_start_path = os.path.join(self.deploy_dir, "service.yaml")
-        self.service_final_path = os.path.join(self.deploy_dir, "service.yaml.tmp")
+        self.service_final_path = os.path.join(
+            self.deploy_dir, "service.yaml.tmp")
 
     def build(self):
         cc_name = _create_cluster_compute(self.cc_path)
@@ -52,4 +52,5 @@ class BackendController:
         if ask_confirm:
             _rollout(self.service_final_path, 0, ask_confirm=ask_confirm)
             _rollout(self.service_final_path, 100, ask_confirm=ask_confirm)
-        _rollout(self.service_final_path, canary_percent=None, ask_confirm=ask_confirm)
+        _rollout(self.service_final_path,
+                 canary_percent=None, ask_confirm=ask_confirm)

@@ -53,7 +53,8 @@ class LlamaCppPipeline(StreamingPipeline):
         if "min_new_tokens" in generate_kwargs:
             lst.append(
                 LlamaCppMinNewTokensLengthLogitsProcessor(
-                    prompt_length_to_skip=len(model_inputs["tokenized_inputs"]),
+                    prompt_length_to_skip=len(
+                        model_inputs["tokenized_inputs"]),
                     min_new_tokens=generate_kwargs.pop("min_new_tokens", 4),
                     eos_token_id=self.model.token_eos(),
                 )
@@ -101,12 +102,13 @@ class LlamaCppPipeline(StreamingPipeline):
         logger.info(inputs)
         inputs = construct_prompts(
             inputs, prompt_format=self.prompt_format)
-        
+
         logger.info(inputs)
         tokenized_inputs = self.tokenizer.encode(inputs[0])
         kwargs = self._add_default_generate_kwargs(
             kwargs,
-            model_inputs={"inputs": inputs, "tokenized_inputs": tokenized_inputs},
+            model_inputs={"inputs": inputs,
+                          "tokenized_inputs": tokenized_inputs},
         )
 
         logger.info(f"Forward params: {kwargs}, model_inputs {inputs}")
@@ -138,7 +140,8 @@ class LlamaCppPipeline(StreamingPipeline):
         tokenized_inputs = self.tokenizer.encode(inputs[0])
         kwargs = self._add_default_generate_kwargs(
             kwargs,
-            model_inputs={"inputs": inputs, "tokenized_inputs": tokenized_inputs},
+            model_inputs={"inputs": inputs,
+                          "tokenized_inputs": tokenized_inputs},
         )
 
         logger.info(f"Forward params: {kwargs}, model_inputs {inputs}")
@@ -169,7 +172,7 @@ class LlamaCppPipeline(StreamingPipeline):
 
     def forward(self, model_inputs, **generate_kwargs):
         pass
-    
+
     @classmethod
     def from_initializer(
         cls,

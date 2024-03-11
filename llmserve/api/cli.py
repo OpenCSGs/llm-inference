@@ -7,18 +7,22 @@ from rich import print as rp
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.table import Table
-from ray.serve._private.constants import ( DEFAULT_HTTP_PORT )
+from ray.serve._private.constants import (DEFAULT_HTTP_PORT)
 from llmserve.api import sdk
 
 app = typer.Typer(add_completion=False)
 
-model_type = typer.Option(default=..., help="The model to use. You can specify multiple models.")
-app_name_type = typer.Option(default=..., help="The name of ray serve application.")
-host_type = typer.Option(default=..., help="The host ip address of api serivce.")
-port_type = typer.Option(default=...,help="The port of service.")
+model_type = typer.Option(
+    default=..., help="The model to use. You can specify multiple models.")
+app_name_type = typer.Option(
+    default=..., help="The name of ray serve application.")
+host_type = typer.Option(
+    default=..., help="The host ip address of api serivce.")
+port_type = typer.Option(default=..., help="The port of service.")
 prompt_type = typer.Option(help="Prompt to query")
 stats_type = typer.Option(help="Whether to print generated statistics")
-prompt_file_type = typer.Option(default=..., help="File containing prompts. A simple text file")
+prompt_file_type = typer.Option(
+    default=..., help="File containing prompts. A simple text file")
 separator_type = typer.Option(help="Separator used in prompt files")
 results_type = typer.Option(help="Where to save the results")
 file_type = typer.Option(default=..., help="The flow graph")
@@ -26,14 +30,16 @@ evaluator_type = typer.Option(help="Which LLM to use for evaluation")
 
 LOCAL_HOST = "127.0.0.1"
 
-list_app = typer.Typer(name="list", help="List available model(s) and deployed serving etc.")
+list_app = typer.Typer(
+    name="list", help="List available model(s) and deployed serving etc.")
 app.add_typer(list_app)
+
 
 @list_app.command()
 def model(metadata: Annotated[bool, "Whether to print metadata"] = False):
     """Get a list of the available models."""
     result = sdk.list_models()
-    #print(result)
+    # print(result)
     if metadata:
         for k, v in result.items():
             rp(f"[bold]{k}:[/]")
@@ -47,12 +53,14 @@ def serving(appname: Annotated[Optional[List[str]], model_type] = None):
     '''Get the serving URL for model deploymemt.'''
     print(json.dumps(sdk.list_serving(appname), indent=2))
 
-def _print_result(result, model, print_stats):
+
+def _print_result(result, print_stats):
     if print_stats:
         rp("[bold]Stats:[/]")
         rp(result)
     else:
         rp(result)
+
 
 def progress_spinner():
     return Progress(
@@ -60,6 +68,7 @@ def progress_spinner():
         TextColumn("[progress.description]{task.description}"),
         transient=True,
     )
+
 
 @app.command()
 def predict(
@@ -86,27 +95,31 @@ def predict(
                 description=f"Processing all prompts against model: {m}.",
                 total=None,
             )
-            predict_results = sdk.batch_query(model=m, prompts=prompt, port=port, appname=appname)
+            predict_results = sdk.batch_query(
+                model=m, prompts=prompt, port=port, appname=appname)
             for result in predict_results:
-                _print_result(result, m, print_stats)
+                _print_result(result, print_stats)
 
             for i, p in enumerate(prompt):
                 result = predict_results[i]
                 text = result
                 # del result["generated_text"]
-                results[p].append({"model": m, "result": text, "stats": result})
+                results[p].append(
+                    {"model": m, "result": text, "stats": result})
 
         progress.add_task(description="Writing output file.", total=None)
         with open(output_file, "w") as f:
             f.write(json.dumps(results, indent=2))
 
 
-start_app = typer.Typer(name="start", help="Start application(s) for LLM serving, API server, experimention, fine-tuning and comparation.")
+start_app = typer.Typer(
+    name="start", help="Start application(s) for LLM serving, API server, experimention, fine-tuning and comparation.")
 app.add_typer(start_app)
 
+
 @start_app.command()
-def serving(
-    model: Annotated[List[str], model_type], 
+def serving(  # pylint: disable=function-redefined
+    model: Annotated[List[str], model_type],
     appname: Annotated[Optional[str], app_name_type] = "default",
     port: Annotated[Optional[int], port_type] = DEFAULT_HTTP_PORT
 ):
@@ -116,6 +129,7 @@ def serving(
         *model: The model to run.
     """
     sdk.run(model=model, appname=appname, port=port)
+
 
 @start_app.command()
 def experimental(
@@ -128,7 +142,7 @@ def experimental(
     Args:
         *model: The model to run.
     """
-    sdk.run_experimental(model = model, appname = appname, port = port)
+    sdk.run_experimental(model=model, appname=appname, port=port)
 
 
 @start_app.command()
@@ -140,6 +154,7 @@ def comparation():
     """
     sdk.run_comparation()
 
+
 @start_app.command()
 def apiserver(port: Annotated[Optional[int], port_type] = DEFAULT_HTTP_PORT):
     """Start API server.
@@ -149,11 +164,14 @@ def apiserver(port: Annotated[Optional[int], port_type] = DEFAULT_HTTP_PORT):
     """
     sdk.start_apiserver(port)
 
-stop_app = typer.Typer(name="stop", help="Stop application(s) for LLM serving and API server.")
+
+stop_app = typer.Typer(
+    name="stop", help="Stop application(s) for LLM serving and API server.")
 app.add_typer(stop_app)
 
+
 @stop_app.command()
-def serving(
+def serving(  # pylint: disable=function-redefined
     appname: Annotated[str, app_name_type],
     port: Annotated[int, port_type] = DEFAULT_HTTP_PORT
 ):
@@ -164,18 +182,19 @@ def serving(
     """
     sdk.del_serve(appname)
 
+
 @stop_app.command()
-def apiserver():
+def apiserver():  # pylint: disable=function-redefined
     """Stop API server.
     """
     sdk.del_serve("apiserver")
 
-#@app.command()
-#def evaluate(
+# @app.command()
+# def evaluate(
 #    input_file: Annotated[str, results_type] = "llmserve-output.json",
 #    evaluation_file: Annotated[str, results_type] = "evaluation-output.json",
 #    evaluator: Annotated[str, evaluator_type] = "gpt-4",
-#):
+# ):
 #    """Evaluate and summarize the results of a multi_query run with a strong
 #    'evaluator' LLM like GPT-4.
 #    """
@@ -239,7 +258,7 @@ def apiserver():
 #             )
 #             results = sdk.batch_query(m, prompt)
 #             for result in results:
-#                 _print_result(result, m, print_stats)
+#                 _print_result(result, print_stats)
 
 
 # @app.command(deprecated=True, name="multi_query")
