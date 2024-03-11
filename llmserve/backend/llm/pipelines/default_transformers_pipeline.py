@@ -125,8 +125,9 @@ class DefaultTransformersPipeline(BasePipeline):
         logger.info(f"output data from pipeline: ****** {data}")
         if self.postprocess:
             output = self.postprocess(data)
-        output = self.format_output(
-            data[0], inputs, preprocess_time, generation_time)
+        if kwargs.get("task") == "text-generation":
+            output = self.format_output(
+                data[0], inputs, preprocess_time, generation_time)
 
         return output
 
