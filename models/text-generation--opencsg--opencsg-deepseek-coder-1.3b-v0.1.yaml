@@ -37,8 +37,8 @@ model_config:
       temperature: 0.6
       top_p: 0.9
       repetition_penalty: 1
-      max_length: 240
-      max_new_tokens: 240
+      max_length: 256
+      max_new_tokens: 256
     # prompt_format: "Below is an instruction that describes a task. Write a response that appropriately completes the request.\n### Instruction:\n{instruction}\n### Response:\n"
     stopping_sequences: ["### Response:", "### End"]
 scaling_config:
