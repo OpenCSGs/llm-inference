@@ -157,7 +157,7 @@ def generate(
     )
     return outputs
 
-
+import logging
 @ray.remote
 class PredictionWorker(TorchDistributedWorker):
     """A PredictionWorker is a Ray remote actor that runs a single shard of a DeepSpeed job.
@@ -186,10 +186,15 @@ class PredictionWorker(TorchDistributedWorker):
             local_rank (int): Local rank of the current GPU.
             num_cpus_per_worker (int, optional): Number of CPUs to use per worker. Defaults to 1.
         """
-
+        
         # Recreate the logger to make sure it takes precedence over
         # other logger configurations.
-        get_logger(__name__, force=True)
+        # get_logger(__name__, force=True)
+
+        # for DDP, comment now, still consider if ddp is a case
+        # rank = torch.distributed.get_rank()
+        # logger.info(rank)
+
         logger.info(
             f"num_gpus_per_worker: {num_gpus_per_worker}, num_cpus_per_worker: {num_cpus_per_worker}")
         os.environ["OMP_NUM_THREADS"] = str(int(num_cpus_per_worker))
@@ -409,19 +414,32 @@ class LLMPredictor:
         Returns:
             A list of generated texts.
         """
+        def slice_prompts(worker_num: int, worker_index: int, prompts: list[str]):
+            prompts = ray.get(prompts)
+
+            slice_size = len(prompts)//worker_num if len(prompts)//worker_num != 0 else 1
+            if worker_index == worker_num - 1:
+                return prompts[slice_size * worker_index:]
+            else:
+                return prompts[slice_size * worker_index: slice_size * worker_index + slice_size]
+
         logger.info('LLM Predictor do async predict')
+
         async with self._base_worker_group_lock:
             prediction = (
                 await asyncio.gather(
                     *[
                         worker.generate.remote(
-                            prompts,
+                            slice_prompts(len(self.base_worker_group), index, prompts),
+                            # prompts,
                             timeout_s=timeout_s,
                             start_timestamp=start_timestamp,
                             **self.args.model_config.generation.all_generate_kwargs if self.args.model_config.generation else {},  # pylint:disable=no-member
-                        )
-                        for worker in self.base_worker_group
+                        ) if len(slice_prompts(len(self.base_worker_group), index, prompts)) > 0 else ray.put([])
+
+                        for index, worker in enumerate(self.base_worker_group)
+                        # for worker in self.base_worker_group
                     ]
                 )
-            )[0]
-        return prediction
+            )
+        return [response for responses in prediction for response in responses]
