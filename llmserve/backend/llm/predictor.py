@@ -34,8 +34,8 @@ logger = get_logger(__name__)
 @timeit
 def init_model(
     llm_config: LLMConfig,
-    world_size: int,
-    local_rank: int,
+    world_size: int, # for ddp, should be remove in next release
+    local_rank: int, # for ddp, should be remove in next release
     max_batch_size: Optional[int] = None,
 ):
     """Initialize the model.
@@ -48,7 +48,7 @@ def init_model(
     """
     logger.info(
         f"Initializing model {llm_config.model_id} with local_rank: {local_rank}")
-    # os.environ['CUDA_VISIBLE_DEVICES'] = "0,1"
+    
     # Lazy import so that the new cache location is used
     torch.backends.cuda.matmul.allow_tf32 = True
     if torch.cuda.is_available():
@@ -176,7 +176,7 @@ class PredictionWorker(TorchDistributedWorker):
 
     def init_model(
         self,
-        local_rank: int,
+        local_rank: int, # for ddp, should be remove in next release
         num_cpus_per_worker: int = 1,
         num_gpus_per_worker: int = 0,
     ):
@@ -198,14 +198,6 @@ class PredictionWorker(TorchDistributedWorker):
         logger.info(
             f"num_gpus_per_worker: {num_gpus_per_worker}, num_cpus_per_worker: {num_cpus_per_worker}")
         os.environ["OMP_NUM_THREADS"] = str(int(num_cpus_per_worker))
-        # if num_gpus_per_worker > 0:
-        #     gpu_ids = ""
-        #     for i in range(int(num_gpus_per_worker)):
-        #         gpu_ids = gpu_ids + "," + str(i)
-        #     gpu_ids = gpu_ids[1:]
-        #     logger.info(f"set CUDA_VISIBLE_DEVICES '{gpu_ids}'")
-        #     os.environ['CUDA_VISIBLE_DEVICES'] = gpu_ids
-        # os.environ['CUDA_VISIBLE_DEVICES'] = "0,1"
 
         logger.info("Prediction Worker calling init model")
         self.generator = init_model(
@@ -373,22 +365,23 @@ class LLMPredictor:
 
         logger.info("Initializing torch_dist process group on workers...")
         # Initialize torch distributed process group for the workers.
-        local_ranks = await init_torch_dist_process_group_async(
-            worker_group,
-            backend="nccl" if scaling_config.use_gpu else "gloo",
-        )
+        # remove the default ddp on 2024/3/13, since thought ddp is not a case in inference, at least should not adopted by default
+        # local_ranks = await init_torch_dist_process_group_async(
+        #     worker_group,
+        #     backend="nccl" if scaling_config.use_gpu else "gloo",
+        # )
 
         # Initialize model on each worker.
         logger.info(
-            f"Initializing model on workers with local_ranks: {local_ranks}")
+            f"Initializing model on workers")
         await asyncio.gather(
             *[
                 worker.init_model.remote(
-                    local_rank,
+                    local_rank = 0, # for ddp, should be remove in next release
                     num_cpus_per_worker=scaling_config.num_cpus_per_worker,
                     num_gpus_per_worker=scaling_config.num_gpus_per_worker
                 )
-                for worker, local_rank in zip(worker_group, local_ranks)
+                for worker in worker_group
             ]
         )
 
