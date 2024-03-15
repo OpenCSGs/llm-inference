@@ -139,26 +139,14 @@ class TransformersInitializer(LLMInitializer):
             logger.info(
                 f"TransformersInitializer: Loading tokenizer by AutoTokenizer from {tokenizer_id_or_path}, trust_remote_code={param_trust_remote_code}")
             return AutoTokenizer.from_pretrained(tokenizer_id_or_path, trust_remote_code=param_trust_remote_code)
-            # return AutoTokenizer.from_pretrained(
-            #     tokenizer_id_or_path,
-            #     # padding_side="left", #TODO have no idea why
-            #     trust_remote_code=from_pretrained_kwargs.get(
-            #         "trust_remote_code", False
-            #     ),
-            # )
+
         except Exception:
             logger.warning(
                 f"Couldn't load tokenizer from derived path {tokenizer_id_or_path}, "
                 f"trying to load from model_id {tokenizer_id}"
             )
             return AutoTokenizer.from_pretrained(tokenizer_id, trust_remote_code=param_trust_remote_code)
-            # return AutoTokenizer.from_pretrained(
-            #     tokenizer_id,
-            #     # padding_side="left",
-            #     trust_remote_code=from_pretrained_kwargs.get(
-            #         "trust_remote_code", False
-            #     ),
-            # )
+
 
     def postprocess_model(self, model: "PreTrainedModel") -> "PreTrainedModel":
         """Postprocess model.

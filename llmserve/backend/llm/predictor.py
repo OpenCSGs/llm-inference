@@ -340,7 +340,8 @@ class LLMPredictor:
             ),
         )
         runtime_env = llm_config.initialization.runtime_env or {}
-        logger.info("Build Prediction Worker")
+        logger.info("Build Prediction Worker with runtime_env:")
+        logger.info(llm_config.initialization.runtime_env)
         prediction_worker_cls = PredictionWorker.options(  # pylint:disable=no-member
             **scaling_options, runtime_env=runtime_env
         )
