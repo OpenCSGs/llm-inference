@@ -30,3 +30,16 @@ Enable `endpoint_url` in model.yaml file to point to custom S3 storage endpoint 
 To use the local path of the model, set `bucket_uri` to the local path. For example: `bucket_uri: /Users/home/models/gpt2/`.
 
 To download the model using `git clone`, set `git_uri` to the model address.
+
+# How to auto download model from OpenCSG Hub
+
+- Add `runtime_env` section to model yaml config file.
+- Update model_id according to [OpenCSG Model Hub](https://portal.opencsg.com/models).
+
+For example:
+```
+  initialization:
+    runtime_env:
+      env_vars:
+        HF_ENDPOINT: https://hub.opencsg.com/hf
+```

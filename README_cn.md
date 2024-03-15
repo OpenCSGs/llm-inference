@@ -114,7 +114,7 @@ ray stop
 
 ## 其他事项
 
-### 使用模型从本地路径或git服务器或S3存储
+### 使用模型从本地路径或git服务器或S3存储或OpenCSG Model Hub
 
 请参见[此文档](./docs/git_server_s3_storage.md)的内容，查看如何从本地路径或git服务器或S3存储使用模型。
 

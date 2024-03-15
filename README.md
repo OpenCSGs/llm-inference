@@ -116,7 +116,7 @@ See the [guide](./docs/deploy_on_kubernetes.md) to deploy on kubernetes.
 
 ## FAQ
 
-### How to use model from local path or git server or S3 storage
+### How to use model from local path or git server or S3 storage or OpenCSG Hub
 
 See the [guide](./docs/git_server_s3_storage.md) for how to use model from local path or git server or S3 storage.
 
