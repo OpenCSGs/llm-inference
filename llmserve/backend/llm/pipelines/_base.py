@@ -167,6 +167,7 @@ class BasePipeline(ABC):
         model_inputs = self.preprocess(inputs, **preprocess_params)
         model_inputs = self._ensure_tensor_on_device(
             model_inputs, device=self.device)
+        
         forward_params = self._add_default_generate_kwargs(
             forward_params, model_inputs)
         logger.info(f"Forward params: {forward_params}")
@@ -271,52 +272,38 @@ class BasePipeline(ABC):
         return_text=None,
         return_type=None,
         clean_up_tokenization_spaces=None,
-        prefix=None,
-        handle_long_generation=None,
-        stop_sequence=None,
         # New llmserve arguments
         return_token_type_ids=None,
+        return_attention_mask=None,
         stopping_sequences=None,
         add_special_tokens=None,
         timeout_s=None,
         start_timestamp=None,
+        # Latest add arguments
+        eos_token = None,
+        pad_token = None,
         **generate_kwargs,
     ):
         preprocess_params = {}
-        if prefix is not None:
-            preprocess_params["prefix"] = prefix
+
         if return_token_type_ids is not None:
             preprocess_params["return_token_type_ids"] = return_token_type_ids
+
         if add_special_tokens is not None:
             preprocess_params["add_special_tokens"] = add_special_tokens
-        if prefix:
-            prefix_inputs = self.tokenizer(
-                prefix, padding=False, add_special_tokens=False, return_tensors="pt"
-            )
-            prefix_length = prefix_inputs["input_ids"].shape[-1]
 
-            if "max_new_tokens" in generate_kwargs:
-                pass
-            elif "max_length" in generate_kwargs:
-                generate_kwargs["max_length"] += prefix_length
-            else:
-                generate_kwargs["max_length"] = (
-                    self.model.config.max_length + prefix_length
-                )
+        if return_attention_mask is not None:
+            preprocess_params["return_attention_mask"] = return_attention_mask
+            
+        if eos_token is not None:
+            preprocess_params["eos_token"] = eos_token
 
-            if "min_length" in generate_kwargs:
-                generate_kwargs["min_length"] += prefix_length
-        if handle_long_generation is not None:
-            if handle_long_generation not in {"hole"}:
-                raise ValueError(
-                    f"{handle_long_generation} is not a valid value for `handle_long_generation` parameter expected"
-                    " [None, 'hole']"
-                )
-            preprocess_params["handle_long_generation"] = handle_long_generation
+        if pad_token is not None:
+            preprocess_params["pad_token"] = pad_token
 
+        # for StoppingCriteria
         if stopping_sequences is not None:
             generate_kwargs["stopping_sequences"] = stopping_sequences
-
         if timeout_s is not None and start_timestamp is not None:
             generate_kwargs["max_time_criteria"] = (timeout_s, start_timestamp)
 
@@ -347,18 +334,6 @@ class BasePipeline(ABC):
             postprocess_params[
                 "clean_up_tokenization_spaces"
             ] = clean_up_tokenization_spaces
-
-        if stop_sequence is not None:
-            stop_sequence_ids = self.tokenizer.encode(
-                stop_sequence, add_special_tokens=False
-            )
-            if len(stop_sequence_ids) > 1:
-                warnings.warn(
-                    "Stopping on a multiple token sequence is not yet supported on transformers. The first token of"
-                    " the stop sequence will be used as the stop sequence string in the interim.",
-                    stacklevel=2,
-                )
-            generate_kwargs["eos_token_id"] = stop_sequence_ids[0]
 
         return preprocess_params, forward_params, postprocess_params
 
