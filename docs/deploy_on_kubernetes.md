@@ -18,13 +18,13 @@ aws_access_key_id = dlwuVbseIlXR5GppudjxH
 aws_secret_access_key = aNINkp4MwMtthZpjbflxlsf3uZUaNpmBSQ0dcubgJ
 ```
 
-Build the base image of KubeRay with the docker file `deploy/ray/Dockerfile-base`. The default base image is `sean/llmray:base-0.0.2`.
+Build the base image of KubeRay with the docker file `deploy/ray/Dockerfile-base`. The default base image is `registry.cn-beijing.aliyuncs.com/opencsg_public/llmray:base-0.0.2`.
 
 ```
 ./build_llmserve_image_base.sh
 ```
 
-Build KubeRay image with docker file `deploy/ray/Dockerfile`. The default image is `sean/llmray:0.0.2-<COMMIT ID>`.
+Build KubeRay image with docker file `deploy/ray/Dockerfile`. The default image is `registry.cn-beijing.aliyuncs.com/opencsg_public/llmray:0.0.2-<COMMIT ID>`.
 
 ```
 ./build_llmserve_image.sh

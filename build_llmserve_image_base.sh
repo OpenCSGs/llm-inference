@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euxo pipefail
 
-DOCKER_REPO="${LLMSERVE_DOCKER_REPO:-sean/llmray}"
+DOCKER_REPO="${LLMSERVE_DOCKER_REPO:-registry.cn-beijing.aliyuncs.com/opencsg_public/llmray}"
 VERSION="0.0.2"
 DOCKER_TAG="$DOCKER_REPO:base-$VERSION"
 DOCKER_FILE="${LLMSERVE_DOCKER_FILE:-deploy/ray/Dockerfile-base}"
