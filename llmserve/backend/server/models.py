@@ -374,7 +374,7 @@ class GenerationConfig(BaseModelExtended):
     }
     stopping_sequences: Optional[List[Union[str,
                                             int, List[Union[str, int]]]]] = None
-    add_special_tokens: Dict[str, Any] = None
+    # add_special_tokens: Dict[str, Any] = None
 
     @validator("prompt_format")
     def check_prompt_format(cls, value):  # pylint:disable=no-self-argument
@@ -400,10 +400,11 @@ class GenerationConfig(BaseModelExtended):
 
     @property
     def all_generate_kwargs(self) -> Dict[str, Any]:
-        if self.add_special_tokens:
-            return {"stopping_sequences": self.stopping_sequences, **self.generate_kwargs, "add_special_tokens": self.add_special_tokens}
-        else:
-            return {"stopping_sequences": self.stopping_sequences, **self.generate_kwargs}
+        # if self.add_special_tokens:
+        #     return {"stopping_sequences": self.stopping_sequences, **self.generate_kwargs, "add_special_tokens": self.add_special_tokens}
+        # else:
+        #     return {"stopping_sequences": self.stopping_sequences, **self.generate_kwargs}
+        return {"stopping_sequences": self.stopping_sequences, **self.generate_kwargs}
 
 
 class LLMConfig(BaseModelExtended):

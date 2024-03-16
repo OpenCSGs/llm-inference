@@ -45,21 +45,25 @@ class DefaultPipeline(BasePipeline):
             prompts, prompt_format=self.prompt_format)
         instruction_text = construct_prompts(prompts, prompt_format="")
 
-        if generate_kwargs.get("add_special_tokens", False):
-            add_special_tokens = generate_kwargs.get("add_special_tokens")
-            if add_special_tokens.get("pad_token"):
-                self.tokenizer.pad_token = add_special_tokens.get("pad_token")
-            if add_special_tokens.get("eos_token"):
-                self.tokenizer.eos_token = add_special_tokens.get("eos_token")
+        if generate_kwargs.get("eos_token", False):
+            self.tokenizer.eos_token = generate_kwargs.get("eos_token")
+
+        if generate_kwargs.get("pad_token", False):
+            self.tokenizer.eos_token = generate_kwargs.get("pad_token")
 
         if self.tokenizer.pad_token is None:
             self.tokenizer.pad_token = self.tokenizer.eos_token
 
         inputs = self.tokenizer(
-            prompt_text, return_tensors="pt", padding=True
+            prompt_text, return_tensors="pt", add_special_tokens = generate_kwargs.get("add_special_tokens", True), padding=True
         ).to(self.model.device)
+
         if not generate_kwargs.get("return_token_type_ids", True):
             inputs.pop("token_type_ids", None)
+
+        if not generate_kwargs.get("return_attention_mask", True):
+            inputs.pop("attention_mask", None)
+
         et = time.monotonic() - st
         return {
             "inputs": inputs,
