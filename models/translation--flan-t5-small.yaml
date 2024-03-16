@@ -21,7 +21,7 @@ model_config:
     s3_mirror_config:
       bucket_uri: /tmp/hub/models/flan-t5-small/
     initializer:
-      type: TransformersPipeline
+      type: SingleDevice
       use_fast: False
       dtype: float32
       from_pretrained_kwargs:

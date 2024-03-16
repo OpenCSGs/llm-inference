@@ -232,7 +232,7 @@ class Transformers(Initializer, extra=Extra.forbid):
 
     @property
     def allowed_pipelines(self) -> Set[str]:
-        return {"default"}
+        return {"default", "defaulttransformers"}
 
 
 class DeepSpeed(Transformers):
@@ -283,29 +283,6 @@ class LlamaCpp(Initializer):
     def allowed_pipelines(self) -> Set[str]:
         return {"llamacpp"}
 
-
-class TransformersPipeline(Initializer):
-    type: Literal["TransformersPipeline"]
-    use_fast: bool = False
-    dtype: str = "float16"
-    from_pretrained_kwargs: Dict[str, Any] = {}
-
-    @property
-    def torch_dtype(self) -> torch.dtype:
-        return getattr(torch, self.dtype)
-
-    def get_initializer_kwargs(self) -> dict:
-        return {
-            **self.dict(exclude={"type", "from_pretrained_kwargs", "dtype"}),
-            "dtype": self.torch_dtype,
-            **self.from_pretrained_kwargs,
-        }
-
-    @property
-    def allowed_pipelines(self) -> Set[str]:
-        return {"defaulttransformers"}
-
-
 class Vllm(Initializer):
     type: Literal["Vllm"]
     from_pretrained_kwargs: Dict[str, Any] = {}
@@ -339,7 +316,7 @@ class S3MirrorConfig(BaseModelExtended):
 class InitializationConfig(BaseModelExtended):
     initializer: Annotated[
         Union[DeepSpeed, DeviceMap, SingleDevice, Finetune, AutoModel,
-              LlamaCpp, TransformersPipeline, Vllm], Field(discriminator="type")
+              LlamaCpp, Vllm], Field(discriminator="type")
     ]
     pipeline: Union[Literal["default"], Literal["defaulttransformers"],
                     Literal["llamacpp"], Literal["vllm"]] = None

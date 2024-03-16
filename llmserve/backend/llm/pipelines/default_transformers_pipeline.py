@@ -155,6 +155,7 @@ class DefaultTransformersPipeline(BasePipeline):
         logger.info(
             f"DefaultTransformersPipeline default_kwargs {default_kwargs}")
         logger.info(f"DefaultTransformersPipeline model_kwargs {model_kwargs}")
+        
         transformers_pipe = pipeline(
             **default_kwargs,
             model_kwargs=model_kwargs,
