@@ -5,7 +5,6 @@ from .hf_transformers import (
     DeviceMapInitializer,
     SingleDeviceInitializer,
     FinetuneInitializer,
-    TransformersPipelineInitializer,
     AutoModelInitializer,
 )
 
@@ -33,6 +32,5 @@ __all__ = [
     "FinetuneInitializer",
     "AutoModelInitializer",
     "LlamaCppInitializer",
-    "TransformersPipelineInitializer",
     "VllmInitializer",
 ]
