@@ -1,11 +1,14 @@
 # build from Dockerfile-base
-FROM sean/llmray:base-0.0.2
+FROM registry.cn-beijing.aliyuncs.com/opencsg_public/llmray:base-0.0.2
 
 RUN sudo apt-get update && sudo apt-get install -y vim && sudo apt-get clean
 
 COPY "./dist" "/home/ray/dist"
 
 RUN cd /home/ray/dist && pip install "$(ls *.whl | head -n1)[backend, frontend]"
+
+# uncomment for enabled vllm
+# RUN cd /home/ray/dist && pip install "$(ls *.whl | head -n1)[vllm]"
 
 # The build context should be the root of the repo
 # So this gives the model definitions

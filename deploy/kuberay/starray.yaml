@@ -23,7 +23,7 @@ spec:
       spec:
         containers:
         - name: ray-head
-          image: sean/llmray:0.0.2-036f6b1d3918
+          image: registry.cn-beijing.aliyuncs.com/opencsg_public/llmray:0.0.2-50665935ab2c
           resources:
             limits:
               cpu: 2
@@ -63,7 +63,7 @@ spec:
       spec:
         containers:
         - name: llm
-          image: sean/llmray:0.0.2-036f6b1d3918
+          image: registry.cn-beijing.aliyuncs.com/opencsg_public/llmray:0.0.2-50665935ab2c
           lifecycle:
             preStop:
               exec:
