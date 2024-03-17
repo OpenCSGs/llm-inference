@@ -92,9 +92,9 @@ def init_model(
     model_task_info = render_gradio_params(llm_config.model_task)
     warmup_inputs = model_task_info["warmup"] if "warmup" in model_task_info else None
 
-    prowarmup_inputs_max = [warmup_inputs] * (
+    prowarmup_inputs_max = Prompt(prompt=warmup_inputs * (
         int(llm_config.max_input_words / (len(warmup_inputs.split()) + 1)) + 1
-    )
+    ), use_prompt_format=False)
 
     logger.info(
         f"Model {llm_config.model_id} is warming up, input is {warmup_inputs}...")
@@ -109,7 +109,7 @@ def init_model(
     while not warmup_success and llm_config.warmup and warmup_inputs:
         try:
             logger.info("start to test with single prompt")
-            logger.info(f"warmpup prompt is {warmup_inputs}")
+            logger.info(f"warmpup prompt is: {warmup_inputs}")
             resp = generate(
                 [warmup_inputs],
                 pipeline,
