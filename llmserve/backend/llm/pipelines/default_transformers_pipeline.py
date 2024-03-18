@@ -126,8 +126,9 @@ class DefaultTransformersPipeline(BasePipeline):
         if self.postprocess:
             output = self.postprocess(data)
         if self.pipeline.task == "text-generation":
-            output = self.format_output(
-                data[0], inputs, preprocess_time, generation_time)
+            output = [self.format_output(
+                generated, inputs, preprocess_time, generation_time) for generated in data]
+            output = [response for responses in output for response in responses]
 
         return output
 
