@@ -148,7 +148,6 @@ class DefaultTransformersPipeline(BasePipeline):
         model_from_pretrained_kwargs = initializer.get_model_from_pretrained_kwargs()
         default_kwargs = dict(
             model=model_id,
-            # device=device,
             **kwargs,
             **model_from_pretrained_kwargs
         )
@@ -171,7 +170,7 @@ class DefaultTransformersPipeline(BasePipeline):
             **kwargs,
         )
         pipe.pipeline = transformers_pipe
-        transformers_pipe.device = pipe.device
+        # transformers_pipe.device = pipe.device
         logger.info(
             f"pipe.device: {pipe.device}, transformers_pipe.device: {transformers_pipe.device}")
         if "task" in kwargs:
