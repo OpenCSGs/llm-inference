@@ -49,7 +49,7 @@ class DefaultPipeline(BasePipeline):
             self.tokenizer.eos_token = generate_kwargs.get("eos_token")
 
         if generate_kwargs.get("pad_token", False):
-            self.tokenizer.eos_token = generate_kwargs.get("pad_token")
+            self.tokenizer.pad_token = generate_kwargs.get("pad_token")
 
         if self.tokenizer.pad_token is None:
             self.tokenizer.pad_token = self.tokenizer.eos_token
