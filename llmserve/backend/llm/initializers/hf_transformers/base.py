@@ -299,6 +299,11 @@ class DeviceMapInitializer(TransformersInitializer):
 
     def get_model_from_pretrained_kwargs(self):
         return self._get_model_from_pretrained_kwargs()
+    
+    def get_model_init_kwargs(self) -> dict:
+        """now leverage pass specific parameters which pipeline needed but from_retarined rejected
+        """
+        return dict ()
 
 
 class SingleDeviceInitializer(TransformersInitializer):
@@ -336,8 +341,7 @@ class SingleDeviceInitializer(TransformersInitializer):
     def _get_model_from_pretrained_kwargs(self):
         return dict(
             # low_cpu_mem_usage=True,   //should move to config yaml file of mode
-            torch_dtype=self.dtype,
-            device = self.device,
+            torch_dtype=self.dtype,            
             **self.from_pretrained_kwargs,
         )
 
@@ -348,6 +352,13 @@ class SingleDeviceInitializer(TransformersInitializer):
         logger.info(
             f"SingleDeviceInitializer postprocess_model to device {self.device}")
         return super().postprocess_model(model.to(device=self.device))  
+    
+    def get_model_init_kwargs(self) -> dict:
+        """now leverage pass specific parameters which pipeline needed but from_retarined rejected
+        """
+        return dict (
+            device = self.device,
+        )
 
 
 # should be remove soon
