@@ -125,9 +125,10 @@ class DefaultTransformersPipeline(BasePipeline):
         logger.info(f"output data from pipeline: ****** {data}")
         if self.postprocess:
             output = self.postprocess(data)
-        if kwargs.get("task") == "text-generation":
-            output = self.format_output(
-                data[0], inputs, preprocess_time, generation_time)
+        if self.pipeline.task == "text-generation":
+            output = [self.format_output(
+                generated, inputs, preprocess_time, generation_time) for generated in data]
+            output = [response for responses in output for response in responses]
 
         return output
 
@@ -151,13 +152,14 @@ class DefaultTransformersPipeline(BasePipeline):
             **kwargs,
             **model_from_pretrained_kwargs
         )
-        model_kwargs = initializer.get_model_init_kwargs()
+        extral_kwargs = initializer.get_model_init_kwargs()
         logger.info(
             f"DefaultTransformersPipeline default_kwargs {default_kwargs}")
-        logger.info(f"DefaultTransformersPipeline model_kwargs {model_kwargs}")
+        logger.info(f"DefaultTransformersPipeline model_kwargs {extral_kwargs}")
+        
         transformers_pipe = pipeline(
             **default_kwargs,
-            model_kwargs=model_kwargs,
+            **extral_kwargs,
         )
         # transformers_pipe.model = initializer.postprocess_model(transformers_pipe.model)
         pipe = cls(

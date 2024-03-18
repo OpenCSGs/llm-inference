@@ -21,8 +21,7 @@ model_config:
     # s3_mirror_config:
     #   bucket_uri: s3://large-dl-models-mirror/models--amazon--LightGPT/main-safetensors/
     initializer:
-      type: TransformersPipeline
-      use_fast: False
+      type: SingleDevice
       dtype: float32
       from_pretrained_kwargs:
         # use_cache: true

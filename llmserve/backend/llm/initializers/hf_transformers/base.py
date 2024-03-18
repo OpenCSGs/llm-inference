@@ -291,7 +291,7 @@ class DeviceMapInitializer(TransformersInitializer):
 
     def _get_model_from_pretrained_kwargs(self):
         return dict(
-            low_cpu_mem_usage=True,
+            # low_cpu_mem_usage=True,
             torch_dtype=self.dtype,
             device_map=self.device_map,
             **self.from_pretrained_kwargs,
@@ -299,6 +299,11 @@ class DeviceMapInitializer(TransformersInitializer):
 
     def get_model_from_pretrained_kwargs(self):
         return self._get_model_from_pretrained_kwargs()
+    
+    def get_model_init_kwargs(self) -> dict:
+        """now leverage pass specific parameters which pipeline needed but from_retarined rejected
+        """
+        return dict ()
 
 
 class SingleDeviceInitializer(TransformersInitializer):
@@ -336,7 +341,7 @@ class SingleDeviceInitializer(TransformersInitializer):
     def _get_model_from_pretrained_kwargs(self):
         return dict(
             # low_cpu_mem_usage=True,   //should move to config yaml file of mode
-            torch_dtype=self.dtype,
+            torch_dtype=self.dtype,            
             **self.from_pretrained_kwargs,
         )
 
@@ -346,54 +351,14 @@ class SingleDeviceInitializer(TransformersInitializer):
     def postprocess_model(self, model: "PreTrainedModel") -> "PreTrainedModel":
         logger.info(
             f"SingleDeviceInitializer postprocess_model to device {self.device}")
-        return super().postprocess_model(model.to(device=self.device))
-
-
-class TransformersPipelineInitializer(LLMInitializer):
-    """Initialize model and tokenizer and place them on the correct device.
-
-    actually do nothing, need further research TODO
-
-    Args:
-        device (torch.device): Device to place model and tokenizer on.
-        world_size (int): Number of GPUs to use.
-        dtype (torch.dtype, optional): Data type to use. Defaults to torch.float16.
-        use_bettertransformer (bool, optional): Whether to use BetterTransformer. Defaults to False.
-        torch_compile (Optional[Dict[str, Any]], optional): Parameters for ``torch.compile``. Defaults to None.
-        **from_pretrained_kwargs: Keyword arguments for ``AutoModel.from_pretrained``.
-    """
-
-    def __init__(
-        self,
-        device: torch.device,
-        world_size: int,
-        dtype: torch.dtype = torch.float16,
-        use_bettertransformer: bool = False,
-        torch_compile: Optional[Dict[str, Any]] = None,
-        **from_pretrained_kwargs,
-    ):
-        self.device = device
-        self.world_size = world_size
-        self.dtype = dtype
-        self.from_pretrained_kwargs = from_pretrained_kwargs
-        self.use_bettertransformer = use_bettertransformer
-        self.torch_compile = torch_compile
-
-    def load_model(self, model_id: str) -> "PreTrainedModel":
-        pass
-
-    def load_tokenizer(self, tokenizer_id: str) -> "PreTrainedTokenizer":
-        pass
-
-    def _get_model_from_pretrained_kwargs(self):
-        return dict(
-            # low_cpu_mem_usage=True,   //should move to config yaml file of mode
-            torch_dtype=self.dtype,
-            **self.from_pretrained_kwargs,
+        return super().postprocess_model(model.to(device=self.device))  
+    
+    def get_model_init_kwargs(self) -> dict:
+        """now leverage pass specific parameters which pipeline needed but from_retarined rejected
+        """
+        return dict (
+            device = self.device,
         )
-
-    def get_model_from_pretrained_kwargs(self):
-        return self._get_model_from_pretrained_kwargs()
 
 
 # should be remove soon

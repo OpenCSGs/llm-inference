@@ -1,4 +1,4 @@
-from .base import DeviceMapInitializer, SingleDeviceInitializer, TransformersInitializer, FinetuneInitializer, AutoModelInitializer, TransformersPipelineInitializer
+from .base import DeviceMapInitializer, SingleDeviceInitializer, TransformersInitializer, FinetuneInitializer, AutoModelInitializer
 from .deepspeed import DeepSpeedInitializer
 
 __all__ = [
@@ -7,6 +7,5 @@ __all__ = [
     "DeepSpeedInitializer",
     "TransformersInitializer",
     "FinetuneInitializer",
-    "TransformersPipelineInitializer",
     "AutoModelInitializer",
 ]
