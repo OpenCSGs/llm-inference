@@ -327,9 +327,6 @@ class LLMDeployment(LLMPredictor):
         "initial_replicas": 1,
         "max_replicas": 2,
     },
-    ray_actor_options={
-        "num_cpus": 0.1
-    },
     max_concurrent_queries=50,  # Maximum backlog for a single replica
 )
 @serve.ingress(app)
@@ -395,9 +392,6 @@ class RouterDeployment:
         "initial_replicas": 1,
         "max_replicas": 2,
     },
-    ray_actor_options={
-        "num_cpus": 0.1
-    },
     max_concurrent_queries=50,  # Maximum backlog for a single replica
 )
 class ExperimentalDeployment(GradioIngress):
@@ -445,9 +439,6 @@ class ExperimentalDeployment(GradioIngress):
         "min_replicas": 1,
         "initial_replicas": 1,
         "max_replicas": 2,
-    },
-    ray_actor_options={
-        "num_cpus": 0.1
     },
     max_concurrent_queries=50,  # Maximum backlog for a single replica
 )

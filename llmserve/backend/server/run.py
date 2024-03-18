@@ -1,6 +1,6 @@
 import sys
 from typing import List, Union, Optional, Dict
-
+import datetime
 import ray._private.usage.usage_lib
 from ray import serve
 
@@ -176,6 +176,7 @@ def run_experimental(models: Union[LLMApp, str], appname: str = None, port: int 
        run({...LLMApp})         # run a single LLMApp
        run("models/model1.yaml", "models/model2.yaml", {...LLMApp}) # mix and match
     """
+    logger.info(f"begin time: {datetime.datetime.now()}")
     app = llm_experimental(list(models))
     serve_conf = app[1]
     ray._private.usage.usage_lib.record_library_usage("llmserve")
@@ -187,6 +188,7 @@ def run_experimental(models: Union[LLMApp, str], appname: str = None, port: int 
     serve_name = appname + "-" + \
         serve_conf["name"] if appname else serve_conf["name"]
     serve.run(app[0], name=serve_name, route_prefix="/" + serve_name)
+    logger.info(f"end time: {datetime.datetime.now()}")
 
 
 def del_serve(app_name: str):
