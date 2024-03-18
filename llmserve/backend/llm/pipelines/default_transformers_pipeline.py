@@ -91,8 +91,8 @@ class DefaultTransformersPipeline(BasePipeline):
         kwargs.pop("timeout_s", None)
         kwargs.pop("start_timestamp", None)
         logger.info(f"input data: {data}")
-        # special cases that needs to be handled differently
 
+        # special cases that needs to be handled differently
         generation_st = time.monotonic()
         logger.info(f"self.pipeline.device: {self.pipeline.device}")
         if isinstance(
@@ -148,7 +148,6 @@ class DefaultTransformersPipeline(BasePipeline):
         model_from_pretrained_kwargs = initializer.get_model_from_pretrained_kwargs()
         default_kwargs = dict(
             model=model_id,
-            # device=device,
             **kwargs,
             **model_from_pretrained_kwargs
         )
@@ -171,7 +170,7 @@ class DefaultTransformersPipeline(BasePipeline):
             **kwargs,
         )
         pipe.pipeline = transformers_pipe
-        transformers_pipe.device = pipe.device
+        # transformers_pipe.device = pipe.device
         logger.info(
             f"pipe.device: {pipe.device}, transformers_pipe.device: {transformers_pipe.device}")
         if "task" in kwargs:
