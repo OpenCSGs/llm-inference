@@ -92,18 +92,19 @@ def init_model(
     model_task_info = render_gradio_params(llm_config.model_task)
     warmup_inputs = model_task_info["warmup"] if "warmup" in model_task_info else None
 
-    prowarmup_inputs_max = Prompt(prompt=warmup_inputs * (
-        int(llm_config.max_input_words / (len(warmup_inputs.split()) + 1)) + 1
-    ), use_prompt_format=False)
+    if llm_config.warmup and warmup_inputs:
+        prowarmup_inputs_max = Prompt(prompt=warmup_inputs * (
+            int(llm_config.max_input_words / (len(warmup_inputs.split()) + 1)) + 1
+        ), use_prompt_format=False)
 
-    logger.info(
-        f"Model {llm_config.model_id} is warming up, input is {warmup_inputs}...")
-    if llm_config.generation:
-        generate_kwargs = llm_config.generation.all_generate_kwargs.copy()
-        if "max_new_tokens" in generate_kwargs:
-            generate_kwargs["min_new_tokens"] = generate_kwargs["max_new_tokens"]
-    else:
-        generate_kwargs = {}
+        logger.info(
+            f"Model {llm_config.model_id} is warming up, input is {warmup_inputs}...")
+        if llm_config.generation:
+            generate_kwargs = llm_config.generation.all_generate_kwargs.copy()
+            if "max_new_tokens" in generate_kwargs:
+                generate_kwargs["min_new_tokens"] = generate_kwargs["max_new_tokens"]
+        else:
+            generate_kwargs = {}
 
     warmup_success = False
     while not warmup_success and llm_config.warmup and warmup_inputs:

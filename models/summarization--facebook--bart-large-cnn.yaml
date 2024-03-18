@@ -23,7 +23,6 @@ model_config:
     initializer:
       type: SingleDevice
       dtype: float32
-      use_fast: False
       from_pretrained_kwargs:
         use_cache: true
         trust_remote_code: true
