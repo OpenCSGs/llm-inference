@@ -25,22 +25,16 @@ model_config:
       from_pretrained_kwargs:
         use_cache: true
         trust_remote_code: true
-        device_map: auto
-      # use_kernel: true   # for deepspped type only
-      # max_tokens: 1536   # for deepspped type only
     pipeline: default
   generation:
     max_batch_size: 18
     generate_kwargs:
       do_sample: false
       top_k: 50
-      temperature: 0.6
-      top_p: 0.9
-      repetition_penalty: 1
-      max_length: 256
+      top_p: 0.95
+      num_return_sequences: 1
       max_new_tokens: 256
-    # prompt_format: "Below is an instruction that describes a task. Write a response that appropriately completes the request.\n### Instruction:\n{instruction}\n### Response:\n"
-    stopping_sequences: ["### Response:", "### End"]
+    prompt_format: "'role': 'user', 'content': {instruction}"
 scaling_config:
   num_workers: 1
   num_gpus_per_worker: 1
