@@ -64,9 +64,8 @@ LLMTEMPLATE_MODEL_CONFIG_EXPERIMENTAL = {
         "runtime_env": {
         },
         "initializer": {
-            "type": "TransformersPipeline",
+            "type": "SingleDevice",
             "dtype": "float32",
-            "use_fast": False,
             "from_pretrained_kwargs": {
                 "use_cache": True,
                 "trust_remote_code": True

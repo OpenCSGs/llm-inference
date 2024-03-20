@@ -48,7 +48,7 @@ def init_model(
     """
     logger.info(
         f"Initializing model {llm_config.model_id} with local_rank: {local_rank}")
-    # os.environ['CUDA_VISIBLE_DEVICES'] = "0,1"
+
     # Lazy import so that the new cache location is used
     torch.backends.cuda.matmul.allow_tf32 = True
     if torch.cuda.is_available():
@@ -87,36 +87,30 @@ def init_model(
     # otherwise subsequent batches with more entries than the first batch
     # will raise CUDA errors if use_kernel=True.
     batch_size = max_batch_size or 1
-    # prompt = [WARMUP_PROMPT] * (
-    #     int(llm_config.max_input_words / (len(WARMUP_PROMPT.split()) + 1)) + 1
-    # )
+
     logger.info(f"Model {llm_config.model_id} batch_size is {batch_size}")
     model_task_info = render_gradio_params(llm_config.model_task)
     warmup_inputs = model_task_info["warmup"] if "warmup" in model_task_info else None
-    # prompt = WARMUP_PROMPT
-    # prompt = " ".join(prompt)
-    logger.info(
-        f"Model {llm_config.model_id} is warming up, input is {warmup_inputs}...")
-    if llm_config.generation:
-        generate_kwargs = llm_config.generation.all_generate_kwargs.copy()
-        if "max_new_tokens" in generate_kwargs:
-            generate_kwargs["min_new_tokens"] = generate_kwargs["max_new_tokens"]
-    else:
-        generate_kwargs = {}
+
+    if llm_config.warmup and warmup_inputs:
+        prowarmup_inputs_max = Prompt(prompt=warmup_inputs * (
+            int(llm_config.max_input_words / (len(warmup_inputs.split()) + 1)) + 1
+        ), use_prompt_format=False)
+
+        logger.info(
+            f"Model {llm_config.model_id} is warming up, input is {warmup_inputs}...")
+        if llm_config.generation:
+            generate_kwargs = llm_config.generation.all_generate_kwargs.copy()
+            if "max_new_tokens" in generate_kwargs:
+                generate_kwargs["min_new_tokens"] = generate_kwargs["max_new_tokens"]
+        else:
+            generate_kwargs = {}
 
     warmup_success = False
     while not warmup_success and llm_config.warmup and warmup_inputs:
         try:
-            # assert batch_size > 0
-            # resp1 = generate(
-            #     [prompt] * batch_size,
-            #     pipeline,
-            #     **generate_kwargs,
-            # )
-            # logger.info(str(resp1))
-            # assert len(resp1) == batch_size
-            # assert all(x.generated_text for x in resp1)
-            logger.info(f"warmpup prompt is {warmup_inputs}")
+            logger.info("start to test with single prompt")
+            logger.info(f"warmpup prompt is: {warmup_inputs}")
             resp = generate(
                 [warmup_inputs],
                 pipeline,
@@ -124,7 +118,19 @@ def init_model(
             )
             logger.info(f"warmpup response is {str(resp)}")
             assert len(resp) > 0
-            # assert all(x.generated_text for x in resp2)
+            assert all(x.generated_text for x in resp)
+
+            logger.info("start to test with max batch prompts, try to find a suitable batch size")
+            assert batch_size > 0
+            resp_batch = generate(
+                [prowarmup_inputs_max] * batch_size,
+                pipeline,
+                **generate_kwargs,
+            )
+            logger.info(str(resp_batch))
+            assert len(resp_batch) == batch_size
+            assert all(x.generated_text for x in resp_batch)
+
             warmup_success = True
         except torch.cuda.OutOfMemoryError:
             batch_size -= 2
@@ -198,14 +204,6 @@ class PredictionWorker(TorchDistributedWorker):
         logger.info(
             f"num_gpus_per_worker: {num_gpus_per_worker}, num_cpus_per_worker: {num_cpus_per_worker}")
         os.environ["OMP_NUM_THREADS"] = str(int(num_cpus_per_worker))
-        # if num_gpus_per_worker > 0:
-        #     gpu_ids = ""
-        #     for i in range(int(num_gpus_per_worker)):
-        #         gpu_ids = gpu_ids + "," + str(i)
-        #     gpu_ids = gpu_ids[1:]
-        #     logger.info(f"set CUDA_VISIBLE_DEVICES '{gpu_ids}'")
-        #     os.environ['CUDA_VISIBLE_DEVICES'] = gpu_ids
-        # os.environ['CUDA_VISIBLE_DEVICES'] = "0,1"
 
         logger.info("Prediction Worker calling init model")
         self.generator = init_model(
