@@ -21,7 +21,7 @@ model_config:
       # bucket_uri: s3://large-dl-models-mirror/models--amazon--LightGPT/main-safetensors/
       bucket_uri: /home/yons/models/opencsg-starcoder-v0.1/
     initializer:
-      type: TransformersPipeline
+      type: DeviceMap
       dtype: float16
       from_pretrained_kwargs:
         use_cache: true
