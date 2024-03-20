@@ -409,6 +409,9 @@ class ExperimentalDeployment(GradioIngress):
         super().__init__(self._chose_ui())
 
     async def query(self, *args) -> Dict[str, Dict[str, Any]]:
+        if args[0] is None:
+            return None
+        
         logger.info(f"ExperimentalDeployment query.args {args}")
         if len(args) > 1:
             prompts = args
