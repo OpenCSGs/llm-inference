@@ -23,7 +23,7 @@ model_config:
       bucket_uri: /tmp/hub/opt-125m/ # Local path of model with hash file
       # git_uri: https://portal.opencsg.com/models/opt-125m.git # git address for git clone
     initializer:
-      type: TransformersPipeline
+      type: SingleDevice
       dtype: float32
       from_pretrained_kwargs:
         use_cache: true

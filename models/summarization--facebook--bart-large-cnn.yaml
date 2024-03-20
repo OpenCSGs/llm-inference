@@ -13,7 +13,7 @@ deployment_config:
   ray_actor_options:
     num_cpus: 0.1    # for a model deployment, we have 3 actor created, 1 and 2 will cost 0.1 cpu, and the model infrence will cost 6(see the setting in the end of the file)
 model_config:
-  warmup: True
+  warmup: False
   model_task: summarization
   model_id: facebook/bart-large-cnn
   max_input_words: 800
