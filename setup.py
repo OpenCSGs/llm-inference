@@ -49,7 +49,7 @@ setup(
             "torchaudio==2.1.2",
             "torchvision==0.16.2",
             "accelerate==0.25.0",
-            "deepspeed==0.12.6",
+            "deepspeed==0.14.0",
             "torchmetrics==1.2.1",
             "llama_cpp_python==0.2.20",
             "transformers==4.33.3",

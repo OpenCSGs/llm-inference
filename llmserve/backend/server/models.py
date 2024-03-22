@@ -240,6 +240,8 @@ class DeepSpeed(Transformers):
     use_kernel: bool = False
     max_tokens: int = 1024
     use_meta_tensor: bool = False
+    test_hybrid_engine: bool = False
+    save_mp_checkpoint_path: bool = False
     ds_inference_kwargs: Optional[Dict[str, Any]] = None
 
     @root_validator
@@ -257,7 +259,10 @@ class DeepSpeed(Transformers):
         if not values.get("use_kernel") and values.get("use_meta_tensor"):
             raise ValueError("'use_meta_tensor=True' needs 'use_kernel=True'.")
         return values
-
+    
+    @property
+    def allowed_pipelines(self) -> Set[str]:
+        return {"default"}
 
 class DeviceMap(Transformers):
     type: Literal["DeviceMap"]

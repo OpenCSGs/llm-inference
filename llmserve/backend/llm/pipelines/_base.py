@@ -165,8 +165,9 @@ class BasePipeline(ABC):
             postprocess_params,
         ) = self._sanitize_parameters(**kwargs)
         model_inputs = self.preprocess(inputs, **preprocess_params)
+
         model_inputs = self._ensure_tensor_on_device(
-            model_inputs, device=self.model.device)
+            model_inputs, device=(self.model.device if hasattr(self.model, 'device') else self.device))
         
         forward_params = self._add_default_generate_kwargs(
             forward_params, model_inputs)

@@ -1,5 +1,5 @@
 import time
-from typing import List, Optional, Union
+from typing import List, Optional, Union, TYPE_CHECKING
 
 import torch
 from transformers import PreTrainedModel, PreTrainedTokenizer
@@ -56,7 +56,7 @@ class DefaultPipeline(BasePipeline):
 
         inputs = self.tokenizer(
             prompt_text, return_tensors="pt", add_special_tokens = generate_kwargs.get("add_special_tokens", True), padding=True
-        ).to(self.model.device)
+        ).to(self.model.device if hasattr(self.model, 'device') else self.device)
 
         if not generate_kwargs.get("return_token_type_ids", True):
             inputs.pop("token_type_ids", None)
