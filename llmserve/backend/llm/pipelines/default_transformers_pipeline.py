@@ -138,9 +138,6 @@ class DefaultTransformersPipeline(BasePipeline):
         instruction_text = construct_prompts_experimental(prompts, prompt_format="")
         logger.info(f"input from pipeline: ****** {prompt_text}")   
 
-        if self.preprocess_extra:
-            prompt_text = self.preprocess_extra(prompt_text)
-
         if isinstance(self.pipeline, transformers.pipelines.text_generation.TextGenerationPipeline):
             inputs = self.tokenizer(
                 prompt_text, return_tensors="pt", add_special_tokens = generate_kwargs.get("add_special_tokens", True), padding=True
@@ -154,6 +151,9 @@ class DefaultTransformersPipeline(BasePipeline):
 
             if self.tokenizer.pad_token is None:
                 self.tokenizer.pad_token = self.tokenizer.eos_token
+                
+        if self.preprocess_extra:
+            prompt_text = self.preprocess_extra(prompt_text)
 
         et = time.monotonic() - st
         return {
