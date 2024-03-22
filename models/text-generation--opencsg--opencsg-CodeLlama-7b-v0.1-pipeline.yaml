@@ -17,16 +17,15 @@ model_config:
   model_id: opencsg/opencsg-CodeLlama-7b-v0.1
   max_input_words: 800
   initialization:
-    s3_mirror_config:
+    #s3_mirror_config:
       # bucket_uri: s3://large-dl-models-mirror/models--amazon--LightGPT/main-safetensors/
-      bucket_uri: /home/yons/models/opencsg-CodeLlama-7b-v0.1/
+      #bucket_uri: /home/yons/models/opencsg-CodeLlama-7b-v0.1/
     initializer:
-      type: TransformersPipeline
+      type: SingleDevice
       dtype: float16
       from_pretrained_kwargs:
         use_cache: true
         trust_remote_code: true
-        device_map: auto
       # use_kernel: true   # for deepspped type only
       # max_tokens: 1536   # for deepspped type only
     pipeline: defaulttransformers

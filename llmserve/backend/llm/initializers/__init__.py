@@ -4,8 +4,6 @@ from .hf_transformers import (
     DeepSpeedInitializer,
     DeviceMapInitializer,
     SingleDeviceInitializer,
-    FinetuneInitializer,
-    AutoModelInitializer,
 )
 
 if TYPE_CHECKING:
@@ -29,8 +27,6 @@ __all__ = [
     "DeepSpeedInitializer",
     "DeviceMapInitializer",
     "SingleDeviceInitializer",
-    "FinetuneInitializer",
-    "AutoModelInitializer",
     "LlamaCppInitializer",
     "VllmInitializer",
 ]
