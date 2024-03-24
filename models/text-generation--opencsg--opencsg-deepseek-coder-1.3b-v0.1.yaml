@@ -32,9 +32,10 @@ model_config:
       do_sample: false
       top_k: 50
       top_p: 0.95
+      repetition_penalty: 1
       num_return_sequences: 1
-      max_new_tokens: 256
-    prompt_format: "'role': 'user', 'content': {instruction}"
+      max_new_tokens: 1024
+    # prompt_format: "'role': 'user', 'content': {instruction}"
 scaling_config:
   num_workers: 1
   num_gpus_per_worker: 1
