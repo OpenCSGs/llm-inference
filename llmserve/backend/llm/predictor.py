@@ -52,8 +52,8 @@ def init_model(
     # Lazy import so that the new cache location is used
     torch.backends.cuda.matmul.allow_tf32 = True
     if torch.cuda.is_available():
-        # device = torch.device(f"cuda:{local_rank}")
-        device = torch.device("cuda")
+        device = torch.device(f"cuda:{local_rank}")
+        # device = torch.device("cuda")
     else:
         device = torch.device("cpu")
 
@@ -383,11 +383,12 @@ class LLMPredictor:
         await asyncio.gather(
             *[
                 worker.init_model.remote(
-                    local_rank,
+                    local_rank = local_rank,
                     num_cpus_per_worker=scaling_config.num_cpus_per_worker,
                     num_gpus_per_worker=scaling_config.num_gpus_per_worker
                 )
                 for worker, local_rank in zip(worker_group, local_ranks)
+                # for worker in worker_group
             ]
         )
 
@@ -425,20 +426,39 @@ class LLMPredictor:
         logger.info('LLM Predictor do async predict')
 
         async with self._base_worker_group_lock:
+            # prediction = (
+            #     await asyncio.gather(
+            #         *[
+            #             worker.generate.remote(
+            #                 slice_prompts(len(self.base_worker_group), index, prompts),
+            #                 # prompts,
+            #                 timeout_s=timeout_s,
+            #                 start_timestamp=start_timestamp,
+            #                 **self.args.model_config.generation.all_generate_kwargs if self.args.model_config.generation else {},  # pylint:disable=no-member
+            #             ) if len(slice_prompts(len(self.base_worker_group), index, prompts)) > 0 else ray.put([])
+
+            #             for index, worker in enumerate(self.base_worker_group)
+            #             # for worker in self.base_worker_group
+            #         ]
+            #     )
+            # )
+        # return [response for responses in prediction for response in responses]
             prediction = (
                 await asyncio.gather(
                     *[
                         worker.generate.remote(
-                            slice_prompts(len(self.base_worker_group), index, prompts),
-                            # prompts,
+                            # slice_prompts(len(self.base_worker_group), index, prompts),
+                            prompts,
                             timeout_s=timeout_s,
                             start_timestamp=start_timestamp,
                             **self.args.model_config.generation.all_generate_kwargs if self.args.model_config.generation else {},  # pylint:disable=no-member
-                        ) if len(slice_prompts(len(self.base_worker_group), index, prompts)) > 0 else ray.put([])
+                        )
 
-                        for index, worker in enumerate(self.base_worker_group)
-                        # for worker in self.base_worker_group
+                        # for index, worker in enumerate(self.base_worker_group)
+                        for worker in self.base_worker_group
                     ]
                 )
             )
-        return [response for responses in prediction for response in responses]
+
+            return prediction
+

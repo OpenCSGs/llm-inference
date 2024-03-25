@@ -45,7 +45,9 @@ class DeepSpeedInitializer(TransformersInitializer):
         max_tokens: int = 1024,
         use_kernel: bool = False,
         use_meta_tensor: bool = False,
-        injection_policy=None,
+        test_hybrid_engine: bool = False,
+        save_mp_checkpoint_path: bool = False,
+        # injection_policy=None,
         ds_inference_kwargs: Optional[Dict[str, Any]] = None,
         **from_pretrained_kwargs,
     ):
@@ -60,8 +62,10 @@ class DeepSpeedInitializer(TransformersInitializer):
         self.max_tokens = max_tokens
         self.use_kernel = use_kernel
         self.use_meta_tensor = use_meta_tensor
+        self.test_hybrid_engine = test_hybrid_engine
+        self.save_mp_checkpoint_path = save_mp_checkpoint_path
         # TODO: Allow conversion from strings (need to do dynamic imports)
-        self.injection_policy = injection_policy
+        # self.injection_policy = injection_policy
         self.ds_inference_kwargs = ds_inference_kwargs
 
         if self.use_kernel:
@@ -114,6 +118,8 @@ class DeepSpeedInitializer(TransformersInitializer):
                     for entry in Path(repo_root).rglob("*.[bp][it][n]")
                     if entry.is_file()
                 ]
+
+                # BOOLM ?!
                 data = {"type": "BLOOM",
                         "checkpoints": file_list, "version": 1.0}
                 json.dump(data, f)
@@ -170,58 +176,78 @@ class DeepSpeedInitializer(TransformersInitializer):
         return model
 
     def postprocess_model(self, model: "PreTrainedModel") -> "PreTrainedModel":
-        from transformers import GPTNeoXForCausalLM, LlamaForCausalLM
-
-        injection_policy = self.injection_policy
-        # TODO: remove those later when deepspeed master is updated
-        if injection_policy is None and not self.use_kernel:
-            if isinstance(model, GPTNeoXForCausalLM):
-                from transformers import GPTNeoXLayer
-
-                injection_policy = {
-                    GPTNeoXLayer: ("attention.dense", "mlp.dense_4h_to_h")
-                }
-            elif isinstance(model, LlamaForCausalLM):
-                from transformers.models.llama.modeling_llama import LlamaDecoderLayer
-
-                injection_policy = {
-                    LlamaDecoderLayer: ("self_attn.o_proj", "mlp.down_proj")
-                }
-
-        if self.use_bettertransformer:
-            from optimum.bettertransformer import BetterTransformer
-
-            logger.info("Transforming the model with BetterTransformer...")
-            model = BetterTransformer.transform(model)
-
-        ds_kwargs = self.ds_inference_kwargs or {}
-        ds_kwargs = ds_kwargs.copy()
-        ds_kwargs.update(
-            dict(
-                dtype=self.dtype,
-                mp_size=self.world_size,
-                replace_with_kernel_inject=self.use_kernel,
-                injection_policy=injection_policy,
-                max_tokens=self.max_tokens,
-            )
-        )
         if self.use_meta_tensor:
-            ds_kwargs.update(
-                dict(base_dir=self._repo_root, checkpoint=self._checkpoints_json)
-            )
+            ds_kwargs = dict(base_dir=self._repo_root, checkpoint=self._checkpoints_json)
+        else:
+            ds_kwargs = dict()
 
-        logger.info(f"deepspeed.init_inference kwargs: {ds_kwargs}")
-        model = deepspeed.init_inference(
-            model,
-            **ds_kwargs,
-        )
+        # Use DeepSpeed Hybrid Engine for inference
+        if self.test_hybrid_engine:
+            ds_config = {"train_batch_size": 2, "fp16": {"enabled": True if self.dtype==torch.half else False}, "hybrid_engine": {"enabled": True}}
+            model, *_ = deepspeed.initialize(model=model, config=ds_config)
+            model.eval()
+        # If not trying with the HuggingFace baseline, use DeepSpeed Inference Engine
+        else:
+            model = deepspeed.init_inference(model,
+                                        dtype=self.dtype,
+                                        mp_size=self.world_size,
+                                        replace_with_kernel_inject=self.use_kernel,
+                                        max_tokens=self.max_tokens,
+                                        save_mp_checkpoint_path=self.save_mp_checkpoint_path,
+                                        **ds_kwargs
+                                        )     
+        # from transformers import GPTNeoXForCausalLM, LlamaForCausalLM
+
+        # injection_policy = self.injection_policy
+        # # TODO: remove those later when deepspeed master is updated
+        # if injection_policy is None and not self.use_kernel:
+        #     if isinstance(model, GPTNeoXForCausalLM):
+        #         from transformers import GPTNeoXLayer
+
+        #         injection_policy = {
+        #             GPTNeoXLayer: ("attention.dense", "mlp.dense_4h_to_h")
+        #         }
+        #     elif isinstance(model, LlamaForCausalLM):
+        #         from transformers.models.llama.modeling_llama import LlamaDecoderLayer
+
+        #         injection_policy = {
+        #             LlamaDecoderLayer: ("self_attn.o_proj", "mlp.down_proj")
+        #         }
+
+        # if self.use_bettertransformer:
+        #     from optimum.bettertransformer import BetterTransformer
+
+        #     logger.info("Transforming the model with BetterTransformer...")
+        #     model = BetterTransformer.transform(model)
+
+        # ds_kwargs = self.ds_inference_kwargs or {}
+        # ds_kwargs = ds_kwargs.copy()
+        # ds_kwargs.update(
+        #     dict(
+        #         dtype=self.dtype,
+        #         mp_size=self.world_size,
+        #         replace_with_kernel_inject=self.use_kernel,
+        #         injection_policy=injection_policy,
+        #         max_tokens=self.max_tokens,
+        #     )
+        # )
+        # if self.use_meta_tensor:
+        #     ds_kwargs.update(
+        #         dict(base_dir=self._repo_root, checkpoint=self._checkpoints_json)
+        #     )
+
+        # logger.info(f"deepspeed.init_inference kwargs: {ds_kwargs}")
+        # model = deepspeed.init_inference(
+        #     model,
+        #     **ds_kwargs,
+        # )
 
         if self.torch_compile and self.torch_compile["backend"]:
             logger.info("Compiling the model with torch.compile()...")
             model = torch.compile(model, **self.torch_compile)
 
         # Add attributes for compatibility with the pipeline
-        model.use_kernel = self.use_kernel
-        model.device = self.device
-        model = model.to(self.device)
+        # model.use_kernel = self.use_kernel
+        # model.device = self.device
+        # model = model.to(self.device)
         return model
