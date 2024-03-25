@@ -31,6 +31,7 @@ model_config:
     # pipeline: default
   generation:
     max_batch_size: 1
+    batch_wait_timeout_s: 0
     generate_kwargs:
       bos_token_id: 151643,
       # pad_token_id: 151643,
