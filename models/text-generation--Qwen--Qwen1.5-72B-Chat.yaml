@@ -2,7 +2,7 @@ deployment_config:
   autoscaling_config:
     min_replicas: 1
     initial_replicas: 1
-    max_replicas: 8
+    max_replicas: 1
     target_num_ongoing_requests_per_replica: 1.0
     metrics_interval_s: 10.0
     look_back_period_s: 30.0
@@ -12,7 +12,7 @@ deployment_config:
   ray_actor_options:
     num_cpus: 2    # for a model deployment, we have 3 actor created, 1 and 2 will cost 0.1 cpu, and the model infrence will cost 6(see the setting in the end of the file)
 model_config:
-  warmup: True
+  warmup: False
   model_task: text-generation
   model_id: Qwen/Qwen1.5-72B-Chat
   max_input_words: 800
@@ -20,26 +20,30 @@ model_config:
     s3_mirror_config:
       bucket_uri: /data/models/Qwen1.5-72B-Chat/
     initializer:
-      type: SingleDevice
+      type: DeviceMap
       dtype: float16
       from_pretrained_kwargs:
         use_cache: true
         trust_remote_code: true
       # use_kernel: true   # for deepspped type only
       # max_tokens: 1536   # for deepspped type only
-    # pipeline: defaulttransformers
-    pipeline: default
+    pipeline: defaulttransformers
+    # pipeline: default
   generation:
-    max_batch_size: 18
+    max_batch_size: 1
     generate_kwargs:
+      bos_token_id: 151643,
+      # pad_token_id: 151643,
+      # eos_token_id: [151645, 151643],
       do_sample: false
       max_new_tokens: 512
-      repetition_penalty: 1
-      top_p: 0.5
-      top_k: 50
+      repetition_penalty: 1.05
+      temperature: 0.7
+      top_p: 0.8
+      top_k: 20
     prompt_format: "'role': 'user', 'content': {instruction}"
     # stopping_sequences: ["### Response:", "### End"]
 scaling_config:
   num_workers: 1
-  num_gpus_per_worker: 4
+  num_gpus_per_worker: 7
   num_cpus_per_worker: 32  # for inference
