@@ -131,7 +131,8 @@ MODELS_MAPPING = {
     "opencsg/opencsg-starcoder-v0.1": "./models/text-generation--opencsg--opencsg-starcoder-15B-v0.1-pipeline.yaml",
     "OpenCSG/opencsg-starcoder-v0.1": "./models/text-generation--opencsg--opencsg-starcoder-15B-v0.1-pipeline.yaml",
     "opencsg/opencsg-deepseek-coder-1.3b-v0.1": "./models/text-generation--opencsg--opencsg-deepseek-coder-1.3b-v0.1.yaml",
-    "OpenCSG/opencsg-deepseek-coder-1.3b-v0.1": "./models/text-generation--opencsg--opencsg-deepseek-coder-1.3b-v0.1.yaml"
+    "OpenCSG/opencsg-deepseek-coder-1.3b-v0.1": "./models/text-generation--opencsg--opencsg-deepseek-coder-1.3b-v0.1.yaml",
+    "Qwen/Qwen1.5-72B-Chat": "./models/text-generation--Qwen--Qwen1.5-72B-Chat.yaml"
 }
 
 SERVE_RUN_HOST = "0.0.0.0"
