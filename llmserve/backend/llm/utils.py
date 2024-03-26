@@ -19,7 +19,7 @@ from ray.air.util.torch_dist import (
 from torch.hub import _get_torch_home
 
 from llmserve.backend.logger import get_logger
-from llmserve.backend.server.models import S3MirrorConfig
+from llmserve.backend.server.models import S3MirrorConfig, LLMConfig
 
 logger = get_logger(__name__)
 
@@ -279,6 +279,14 @@ async def init_torch_dist_process_group_async(
         node_id = node_and_gpu_ids[rank][0]
         local_rank = node_to_workers[node_id].index(rank)
         local_world_size = len(node_to_workers[node_id])
+        logger.info("++++++++++++++")
+        logger.info(rank)
+        logger.info(world_size)
+        logger.info(local_rank)
+        logger.info(local_world_size)
+        logger.info(master_addr)
+        logger.info(master_port)
+        logger.info(list(node_to_gpu_ids[node_id]))
         setup_futures.append(
             worker.execute.remote(
                 _init_torch_distributed,
@@ -301,3 +309,7 @@ async def init_torch_dist_process_group_async(
     await asyncio.gather(*setup_futures)
 
     return local_ranks
+
+# To get max input token size for warmup. w/ DS, there is "max_tokens" localed "initializer/max_tokens", it will conflict with "max_input_words", prefer "max_tokens" if both existed 
+def get_max_token_size(llm_config: LLMConfig):
+    return llm_config.initialization.initializer.max_tokens if hasattr(llm_config.initialization.initializer, "max_tokens") else llm_config.max_input_words

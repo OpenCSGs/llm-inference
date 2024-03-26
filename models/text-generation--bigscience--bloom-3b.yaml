@@ -32,8 +32,8 @@ model_config:
         trust_remote_code: true
     pipeline: default
   generation:
-    max_batch_size: 2
-    batch_wait_timeout_s: 30
+    max_batch_size: 10
+    batch_wait_timeout_s: 0
     generate_kwargs:
       do_sample: false
       max_new_tokens: 512
