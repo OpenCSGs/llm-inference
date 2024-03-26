@@ -176,6 +176,12 @@ class DeepSpeedInitializer(TransformersInitializer):
         return model
 
     def postprocess_model(self, model: "PreTrainedModel") -> "PreTrainedModel":
+        if self.use_bettertransformer:
+            from optimum.bettertransformer import BetterTransformer
+
+            logger.info("Transforming the model with BetterTransformer...")
+            model = BetterTransformer.transform(model)
+            
         if self.use_meta_tensor:
             ds_kwargs = dict(base_dir=self._repo_root, checkpoint=self._checkpoints_json)
         else:

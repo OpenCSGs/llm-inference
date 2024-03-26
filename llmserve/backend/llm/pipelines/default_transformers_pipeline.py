@@ -101,12 +101,14 @@ class DefaultTransformersPipeline(BasePipeline):
         logger.info(
             f"DefaultTransformersPipeline default_kwargs {default_kwargs}")
         logger.info(f"DefaultTransformersPipeline model_kwargs {extral_kwargs}")
-        
+
         transformers_pipe = pipeline(
             **default_kwargs,
             **extral_kwargs,
         )
 
+        # use initializer to handle "use_bettertransformer" and "torch_compile"
+        transformers_pipe.model = initializer.postprocess_model(transformers_pipe.model)
         pipe = cls(
             model=transformers_pipe.model,
             tokenizer=transformers_pipe.tokenizer,
