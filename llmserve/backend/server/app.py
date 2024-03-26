@@ -423,7 +423,7 @@ class ExperimentalDeployment(GradioIngress):
         )
         logger.info(f"ExperimentalDeployment query.results {results}")
         results = results[0]
-        return results
+        return results.generated_text
 
     def _chose_ui(self) -> Callable:
         logger.info(

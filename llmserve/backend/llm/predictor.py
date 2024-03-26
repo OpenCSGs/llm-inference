@@ -458,7 +458,7 @@ class LLMPredictor:
                         for worker in self.base_worker_group
                     ]
                 )
-            )
+            )[0]
 
             return prediction
 
