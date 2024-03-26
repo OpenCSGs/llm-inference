@@ -19,6 +19,7 @@ from llmserve.backend.llm.utils import (
     init_torch_dist_process_group_async,
     initialize_node,
     timeit,
+    get_max_token_size,
 )
 from llmserve.backend.logger import get_logger
 from llmserve.backend.server.models import Args, LLMConfig, Prompt, Response
@@ -94,7 +95,7 @@ def init_model(
 
     if llm_config.warmup and warmup_inputs:
         prowarmup_inputs_max = Prompt(prompt=warmup_inputs * (
-            int(llm_config.max_input_words / (len(warmup_inputs.split()) + 1)) + 1
+            int(get_max_token_size(llm_config) / (len(warmup_inputs.split()) + 1))
         ), use_prompt_format=False)
 
         logger.info(
