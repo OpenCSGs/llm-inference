@@ -33,7 +33,7 @@ model_config:
     max_batch_size: 1
     batch_wait_timeout_s: 0
     generate_kwargs:
-      bos_token_id: 151643,
+      bos_token_id: 151643
       # pad_token_id: 151643,
       # eos_token_id: [151645, 151643],
       do_sample: false
@@ -42,7 +42,7 @@ model_config:
       temperature: 0.7
       top_p: 0.8
       top_k: 20
-    prompt_format: "'role': 'user', 'content': {instruction}"
+    prompt_format: '[{{"role": "system", "content": "You are a helpful assistant."}},{{"role": "user", "content": "{instruction}"}}]'
     # stopping_sequences: ["### Response:", "### End"]
 scaling_config:
   num_workers: 1
