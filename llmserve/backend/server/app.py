@@ -194,6 +194,7 @@ class LLMDeployment(LLMPredictor):
                 # priority=QueuePriority.GENERATE_TEXT,
                 # start_timestamp=start_timestamp,
             )
+            logger.info(f"generated text: {text}")
             # return text[0]
             return text
 
@@ -351,13 +352,9 @@ class RouterDeployment:
                 logger.info(f"set modelID: {item}")
         logger.info(f"search model key {modelID}")
         if isinstance(prompt, Prompt):
-            results = await asyncio.gather(
-                *(await asyncio.gather(*[self._models[modelID].generate_text.remote(prompt)]))
-            )
+            results = await asyncio.gather(*[self._models[modelID].generate_text.remote(prompt)])
         elif isinstance(prompt, list):
-            results = await asyncio.gather(
-                *(await asyncio.gather(*[self._models[modelID].batch_generate_text.remote(prompt)]))
-            )
+            results = await asyncio.gather(*[self._models[modelID].batch_generate_text.remote(prompt)])
         else:
             raise Exception("Invaid prompt format.")
         logger.info(f"{results}")
@@ -418,9 +415,7 @@ class ExperimentalDeployment(GradioIngress):
         else:
             prompts = args[0]
         logger.info(f"ExperimentalDeployment query.prompts {prompts}")
-        results = await asyncio.gather(
-            *(await asyncio.gather(*[self._model.generate_text.remote(Prompt(prompt=prompts, use_prompt_format=False))]))
-        )
+        results = await asyncio.gather(*[(self._model.generate_text.remote(Prompt(prompt=prompts, use_prompt_format=False)))])
         logger.info(f"ExperimentalDeployment query.results {results}")
         results = results[0]
         return results.generated_text

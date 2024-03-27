@@ -5,5 +5,5 @@ RUN sudo apt-get update && sudo apt-get install -y libaio-dev git-lfs awscli && 
 RUN conda update -n base -c defaults conda -y
 RUN conda install python=3.10 -y
 RUN pip install --upgrade pip
-RUN pip install -U "ray[serve-grpc]==2.8.0"
+RUN pip install -U "ray[serve-grpc]==2.9.3"
 RUN pip install -i https://download.pytorch.org/whl/cu118 torch==2.1.2 torchvision==0.16.2 torchaudio==2.1.2

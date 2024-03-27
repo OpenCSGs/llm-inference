@@ -65,13 +65,13 @@ pip install '.[vllm]' -i https://pypi.tuna.tsinghua.edu.cn/simple/
 Pip install Ray:
 
 ```
-pip install -U "ray[serve-grpc]==2.8.0"
+pip install -U "ray[serve-grpc]==2.9.3"
 ```
 
 Option to use another pip source for faster transfer if needed.
 
 ```
-pip install -U "ray[serve-grpc]==2.8.0" -i https://pypi.tuna.tsinghua.edu.cn/simple/
+pip install -U "ray[serve-grpc]==2.9.3" -i https://pypi.tuna.tsinghua.edu.cn/simple/
 ```
 
 > **Note:** ChatGLM2-6b requires transformers<=4.33.3, while the latest vllm requires transformers>=4.36.0.
@@ -82,7 +82,7 @@ Start cluster then:
 ray start --head --port=6379 --dashboard-host=0.0.0.0 --dashboard-port=8265
 ```
 
-See reference [here](https://docs.ray.io/en/releases-2.8.0/ray-overview/installation.html).
+See reference [here](https://docs.ray.io/en/releases-2.9.3/ray-overview/installation.html).
 
 #### Quick start
 
