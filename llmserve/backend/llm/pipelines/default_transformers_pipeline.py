@@ -2,6 +2,7 @@ from typing import TYPE_CHECKING, List, Optional, Union
 
 import torch
 import time
+import json
 from transformers import Pipeline as TransformersPipeline
 from transformers import PreTrainedModel, PreTrainedTokenizer, pipeline
 
@@ -9,7 +10,7 @@ from llmserve.backend.logger import get_logger
 from llmserve.backend.server.models import Prompt, Response
 
 from ._base import BasePipeline
-from .utils import construct_prompts_experimental, truncate_to_first_stop_token
+from .utils import construct_prompts
 from llmserve.backend.server.utils import render_gradio_params
 from .default_pipeline import DefaultPipeline
 
@@ -135,12 +136,20 @@ class DefaultTransformersPipeline(BasePipeline):
         st = time.monotonic()
         inputs = None
         logger.info(f"input from pipeline: ****** {prompts}")
-        prompt_text = construct_prompts_experimental(
+        prompt_text = construct_prompts(
             prompts, prompt_format=self.prompt_format)
-        instruction_text = construct_prompts_experimental(prompts, prompt_format="")
+        instruction_text = construct_prompts(prompts, prompt_format="")
         logger.info(f"input from pipeline: ****** {prompt_text}")   
 
         if isinstance(self.pipeline, transformers.pipelines.text_generation.TextGenerationPipeline):
+            try:
+                prompt_text_bak = prompt_text
+                prompt_text = [json.loads(prompt) for prompt in prompt_text]
+                prompt_text = [self.tokenizer.apply_chat_template(prompt_obj, tokenize=False, add_generation_prompt=True) for prompt_obj in prompt_text]
+            except:
+                logger.info("Seems no chat template from user or the model donot has a 'chat template'")
+                prompt_text = prompt_text_bak
+
             inputs = self.tokenizer(
                 prompt_text, return_tensors="pt", add_special_tokens = generate_kwargs.get("add_special_tokens", True), padding=True
             )
@@ -224,7 +233,7 @@ class DefaultTransformersPipeline(BasePipeline):
                 output).input_ids)
             num_input_tokens = len(self.tokenizer(inputs[index]))
             response = Response(
-                generated_text=output,
+                generated_text=output[len(inputs[index]):],
                 num_generated_tokens=num_generated_tokens,
                 num_input_tokens=num_input_tokens,
             )

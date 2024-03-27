@@ -69,25 +69,6 @@ def construct_prompts(
         prompts = [prompts]
     return [_construct_prompt(prompt, prompt_format) for prompt in prompts]
 
-
-def construct_prompts_experimental(
-    prompts: Union[str, Prompt, List[str], List[Prompt], Tuple[str]],
-    prompt_format: str,
-) -> List[str]:
-    """Construct prompts from a prompt string or list of prompts."""
-    if not isinstance(prompts, list):
-        prompts = [prompts]
-
-    params = []
-    for prompt in prompts:
-        if isinstance(prompt, Prompt) and isinstance(prompt.prompt, Tuple):
-            params += [_construct_prompt(prompt, prompt_format)
-                       for prompt in prompt.prompt]
-        else:
-            params.append(_construct_prompt(prompt, prompt_format))
-    return params
-
-
 def tokenize_stopping_sequences_where_needed(
     tokenizer: PreTrainedTokenizer,
     stopping_sequences: List[Union[str, int, List[int]]],

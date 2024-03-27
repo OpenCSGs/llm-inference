@@ -6,6 +6,7 @@ from transformers import PreTrainedModel, PreTrainedTokenizer
 
 from llmserve.backend.logger import get_logger
 from llmserve.backend.server.models import Response
+import json
 
 from ._base import BasePipeline
 from .processors import StopOnTokens
@@ -53,6 +54,16 @@ class DefaultPipeline(BasePipeline):
 
         if self.tokenizer.pad_token is None:
             self.tokenizer.pad_token = self.tokenizer.eos_token
+
+        try:
+            prompt_text_bak = prompt_text
+            prompt_text = [json.loads(prompt) for prompt in prompt_text]
+            prompt_text = [self.tokenizer.apply_chat_template(prompt_obj, tokenize=False, add_generation_prompt=True) for prompt_obj in prompt_text]
+        except:
+            logger.info("Seems no chat template from user or the model donot has a 'chat template'")
+            prompt_text = prompt_text_bak
+
+        logger.info(f"Call model.generate with input: {prompt_text}")
 
         inputs = self.tokenizer(
             prompt_text, return_tensors="pt", add_special_tokens = generate_kwargs.get("add_special_tokens", True), padding=True

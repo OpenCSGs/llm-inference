@@ -113,7 +113,7 @@ def init_model(
             logger.info("start to test with single prompt")
             logger.info(f"warmpup prompt is: {warmup_inputs}")
             resp = generate(
-                [warmup_inputs],
+                [Prompt(prompt=warmup_inputs, use_prompt_format=False)],
                 pipeline,
                 **generate_kwargs,
             )
