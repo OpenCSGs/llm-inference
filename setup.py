@@ -52,7 +52,7 @@ setup(
             "deepspeed==0.14.0",
             "torchmetrics==1.2.1",
             "llama_cpp_python==0.2.20",
-            "transformers==4.33.3",
+            "transformers==4.39.1",
         ],
         "vllm": [
             "vllm==0.2.7",

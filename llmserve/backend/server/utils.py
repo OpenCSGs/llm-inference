@@ -175,7 +175,7 @@ def render_gradio_params(hg_task: str) -> Dict[str, Any]:
         pipeline_info = {
             "inputs": gr.components.Textbox(label="Input"),
             "outputs": gr.components.Textbox(label="Output"),
-            "preprocess": lambda x: {"text_inputs": [(text + "\n") for text in x]},
+            "preprocess": lambda x: {"text_inputs": [text for text in x]},
             # "postprocess": lambda r: r[0]["generated_text"],
             "postprocess": lambda r: [text[0]['generated_text'] for text in r],
             "warmup": "Write a short story."
