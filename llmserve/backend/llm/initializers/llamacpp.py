@@ -66,9 +66,9 @@ class LlamaCppInitializer(LLMInitializer):
 
     def _get_model_init_kwargs(self) -> Dict[str, Any]:
         return {
-            # We use a large integer to put all of the layers on GPU by default.
-            "n_gpu_layers": 0 if self.device.type == "cpu" else 10**6,
-            "seed": 0,
+            # -1 means all layers are offloaded to GPU
+            "n_gpu_layers": 0 if self.device.type == "cpu" else -1,
+            "seed": -1,
             "verbose": False,
             "n_threads": int(os.environ["OMP_NUM_THREADS"]),
             **self.model_init_kwargs,
@@ -82,15 +82,11 @@ class LlamaCppInitializer(LLMInitializer):
         # Lazy import to avoid issues on CPU head node
         from llama_cpp import Llama
 
-        return Llama(
+        self.model = Llama(
             model_path=os.path.abspath(model_path),
             **self._get_model_init_kwargs(),
         )
-
+        return self.model
+    
     def load_tokenizer(self, tokenizer_name: str) -> None:
-        return None
-
-    def postprocess(
-        self, model: "Llama", tokenizer: None
-    ) -> Tuple["Llama", LlamaCppTokenizer]:
-        return super().postprocess(model, LlamaCppTokenizer(model))
+        return LlamaCppTokenizer(self.model)
