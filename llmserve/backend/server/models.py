@@ -303,14 +303,6 @@ class Vllm(Initializer):
         return {"vllm"}
 
 
-class Finetune(Transformers):
-    type: Literal["Finetune"]
-
-
-class AutoModel(Transformers):
-    type: Literal["AutoModel"]
-
-
 class S3MirrorConfig(BaseModelExtended):
     endpoint_url: Optional[str] = None
     bucket_uri: Optional[str] = None
@@ -320,7 +312,7 @@ class S3MirrorConfig(BaseModelExtended):
 
 class InitializationConfig(BaseModelExtended):
     initializer: Annotated[
-        Union[DeepSpeed, DeviceMap, SingleDevice, Finetune, AutoModel,
+        Union[DeepSpeed, DeviceMap, SingleDevice,
               LlamaCpp, Vllm], Field(discriminator="type")
     ]
     pipeline: Union[Literal["default"], Literal["defaulttransformers"],
@@ -356,7 +348,6 @@ class GenerationConfig(BaseModelExtended):
     }
     stopping_sequences: Optional[List[Union[str,
                                             int, List[Union[str, int]]]]] = None
-    # add_special_tokens: Dict[str, Any] = None
 
     @validator("prompt_format")
     def check_prompt_format(cls, value):  # pylint:disable=no-self-argument
@@ -382,10 +373,6 @@ class GenerationConfig(BaseModelExtended):
 
     @property
     def all_generate_kwargs(self) -> Dict[str, Any]:
-        # if self.add_special_tokens:
-        #     return {"stopping_sequences": self.stopping_sequences, **self.generate_kwargs, "add_special_tokens": self.add_special_tokens}
-        # else:
-        #     return {"stopping_sequences": self.stopping_sequences, **self.generate_kwargs}
         return {"stopping_sequences": self.stopping_sequences, **self.generate_kwargs}
 
 
