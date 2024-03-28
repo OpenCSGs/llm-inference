@@ -9,6 +9,7 @@ from llmserve.backend.server.models import Response
 from ...initializers.llamacpp import LlamaCppInitializer, LlamaCppTokenizer
 from .._base import StreamingPipeline
 from ..utils import decode_stopping_sequences_where_needed, construct_prompts
+import json
 
 if TYPE_CHECKING:
     from llama_cpp import Llama, LogitsProcessorList, StoppingCriteriaList
@@ -104,20 +105,44 @@ class LlamaCppPipeline(StreamingPipeline):
             inputs, prompt_format=self.prompt_format)
 
         logger.info(inputs)
-        tokenized_inputs = self.tokenizer.encode(inputs[0])
+
+        tokenized_inputs = self.tokenizer.encode(inputs)
         kwargs = self._add_default_generate_kwargs(
             kwargs,
             model_inputs={"inputs": inputs,
                           "tokenized_inputs": tokenized_inputs},
         )
 
+        chat_completion = False
+        try:
+            inputs_bak = inputs
+            inputs = [json.loads(prompt) for prompt in inputs]
+            chat_completion = True
+        except:
+            logger.info("Seems no chat template from user")
+            inputs = inputs_bak
+
         logger.info(f"Forward params: {kwargs}, model_inputs {inputs}")
         responses = []
         for input in inputs:
             st = time.monotonic()
-            output = self.model(input, **kwargs)
+            if chat_completion:
+                kwargs.pop('stopping_criteria', None)
+                kwargs.pop('echo', None)
+                logger.info(f"Forward params: {kwargs}, model_inputs {inputs}")
+                output = self.model.create_chat_completion(
+                    messages=input,
+                    **kwargs
+                )
+                text = output["choices"][0]["message"]["content"].replace("\u200b", "").strip()
+            else:
+                output = self.model(input, **kwargs)
+                text = output["choices"][0]["text"].replace("\u200b", "").strip()
+                
+
+            logger.info(f"llm's raw response is: {output}")
             gen_time = time.monotonic() - st
-            text = output["choices"][0]["text"].replace("\u200b", "").strip()
+            
             responses.append(
                 Response(
                     generated_text=text,
@@ -178,6 +203,7 @@ class LlamaCppPipeline(StreamingPipeline):
         cls,
         initializer: "LlamaCppInitializer",
         model_id: str,
+        prompt_format: Optional[str] = None,
         device: Optional[Union[str, int, torch.device]] = None,
         **kwargs,
     ) -> "LlamaCppPipeline":
@@ -188,6 +214,7 @@ class LlamaCppPipeline(StreamingPipeline):
         return cls(
             model,
             tokenizer,
+            prompt_format,
             device=device,
             **kwargs,
         )
