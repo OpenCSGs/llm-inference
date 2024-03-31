@@ -300,23 +300,6 @@ class LLMDeployment(LLMPredictor):
             return [prediction]
         return prediction[: len(prompts)]
 
-    # Called by Serve to check the replica's health.
-    async def check_health(self):
-        if self._new_worker_group_lock.locked():
-            logger.info("Rollover in progress, skipping health check")
-            return
-        if self.pg and self.base_worker_group:
-            dead_actors = []
-            for actor in self.base_worker_group:
-                actor_state = ray.state.actors(actor._ray_actor_id.hex())
-                if actor_state["State"] == "DEAD":
-                    dead_actors.append(actor)
-            if dead_actors:
-                raise RuntimeError(
-                    f"At least one prediction worker is dead. Dead workers: {dead_actors}. "
-                    "Reinitializing worker group."
-                )
-
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}:{self.args.model_config.model_id}"
 
