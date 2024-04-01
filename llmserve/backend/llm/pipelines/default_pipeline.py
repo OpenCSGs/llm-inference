@@ -42,8 +42,7 @@ class DefaultPipeline(BasePipeline):
 
     def preprocess(self, prompts: List[str], **generate_kwargs):
         st = time.monotonic()
-        prompt_text = construct_prompts(
-            prompts, prompt_format=self.prompt_format)
+        prompt_text = construct_prompts(prompts, prompt_format=self.prompt_format)
         instruction_text = construct_prompts(prompts, prompt_format="")
 
         if generate_kwargs.get("eos_token", False):
@@ -57,9 +56,14 @@ class DefaultPipeline(BasePipeline):
 
         try:
             prompt_text_bak = prompt_text
-            prompt_text = [json.loads(prompt) for prompt in prompt_text]
+            logger.info(f"call json.loads")
+            # for p in prompt_text:
+            #     logger.info(f"{p}")
+            prompt_text = [json.loads(prompt, strict=False) for prompt in prompt_text]
+            logger.info(f"call tokenizer.apply_chat_template")
             prompt_text = [self.tokenizer.apply_chat_template(prompt_obj, tokenize=False, add_generation_prompt=True) for prompt_obj in prompt_text]
-        except:
+        except Exception as ex:
+            logger.error(f"Exception apply_chat_template: {ex}")
             logger.info("Seems no chat template from user or the model donot has a 'chat template'")
             prompt_text = prompt_text_bak
 
