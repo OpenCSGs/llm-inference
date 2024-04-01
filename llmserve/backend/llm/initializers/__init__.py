@@ -10,7 +10,6 @@ if TYPE_CHECKING:
     from ._base import LLMInitializer
 
 from .llamacpp import LlamaCppInitializer
-from .vllm import VllmInitializer
 
 
 def get_initializer_cls_by_name(name: str) -> Type["LLMInitializer"]:
@@ -28,5 +27,4 @@ __all__ = [
     "DeviceMapInitializer",
     "SingleDeviceInitializer",
     "LlamaCppInitializer",
-    "VllmInitializer",
 ]
