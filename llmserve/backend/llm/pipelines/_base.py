@@ -22,6 +22,8 @@ from llmserve.backend.server.models import Prompt, Response
 from .processors import StopOnTokens
 from .utils import tokenize_stopping_sequences_where_needed
 
+from typing import AsyncGenerator, Generator
+
 if TYPE_CHECKING:
     from ..initializers._base import LLMInitializer
 
@@ -338,6 +340,9 @@ class BasePipeline(ABC):
 
         return preprocess_params, forward_params, postprocess_params
 
+    @abstractmethod
+    def streamGenerate(self, prompt: str, **generate_kwargs) -> Generator[str, None, None]:
+        pass
 
 class StreamingPipeline(BasePipeline):
     def stream(

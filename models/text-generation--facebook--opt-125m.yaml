@@ -12,6 +12,7 @@ deployment_config:
   ray_actor_options:
     num_cpus: 0.1    # for a model deployment, we have 3 actor created, 1 and 2 will cost 0.1 cpu, and the model infrence will cost 6(see the setting in the end of the file)
 model_config:
+  stream: False
   warmup: True
   model_task: text-generation
   model_id: facebook/opt-125m
@@ -20,7 +21,7 @@ model_config:
     # s3_mirror_config:
       # endpoint_url: http://39.107.108.170:9000 # Optinal for custom S3 storage endpoint url 
       # bucket_uri: s3://opt-125m/facemodel/  # Must include hash file with commit id in repo
-      # bucket_uri: /tmp/hub/opt-125m/ # Local path of model with hash file
+      # bucket_uri: /Users/hhwang/models/opt-125m/ # Local path of model with hash file
       # git_uri: https://portal.opencsg.com/models/opt-125m.git # git address for git clone
     initializer:
       type: SingleDevice

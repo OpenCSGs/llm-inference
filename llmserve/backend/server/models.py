@@ -377,6 +377,7 @@ class GenerationConfig(BaseModelExtended):
 
 
 class LLMConfig(BaseModelExtended):
+    stream: bool = False # enable steaming api
     warmup: bool    # need warmup?
     model_task: str    # need verification, TODO
     model_id: str

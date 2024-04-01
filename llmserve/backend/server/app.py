@@ -46,6 +46,10 @@ import llmserve.backend.server.config as CONFIG
 from llmserve.api import sdk
 from llmserve.common.utils import _replace_prefix, _reverse_prefix
 
+from starlette.responses import StreamingResponse
+from typing import AsyncGenerator, Generator
+from ray.serve.handle import DeploymentHandle, DeploymentResponseGenerator
+
 # logger = get_logger(__name__)
 logger = get_logger("ray.serve")
 
@@ -303,7 +307,6 @@ class LLMDeployment(LLMPredictor):
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}:{self.args.model_config.model_id}"
 
-
 @serve.deployment(
     # TODO make this configurable in llmserve run
     autoscaling_config={
@@ -315,12 +318,16 @@ class LLMDeployment(LLMPredictor):
 )
 @serve.ingress(app)
 class RouterDeployment:
-    def __init__(
-        self, models: Dict[str, ClassNode], model_configurations: Dict[str, Args]
-    ) -> None:
+    def __init__(self, models: Dict[str, DeploymentHandle], model_configurations: Dict[str, Args]) -> None:
         self._models = models
         # TODO: Remove this once it is possible to reconfigure models on the fly
         self._model_configurations = model_configurations
+        logger.info(f"init: _models.keys: {self._models.keys()}")
+        # logger.info(f"init model_configurations: {model_configurations}")
+        for modelkey in self._models.keys():
+            if self._model_configurations[modelkey].model_config.stream:
+                logger.info(f"Set stream=true for {modelkey}")
+                self._models[modelkey] = self._models[modelkey].options(stream=True)
 
     @app.post("/{model}/run/predict")
     async def predict(self, model: str, prompt: Union[Prompt, List[Prompt]]) -> Union[Dict[str, Any], List[Dict[str, Any]], List[Any]]:
@@ -364,6 +371,30 @@ class RouterDeployment:
     async def models(self) -> List[str]:
         return list(self._models.keys())
 
+    @app.post("/run/stream")
+    def streamer(self, data: dict) -> StreamingResponse:
+        logger.info(f"data: {data}")
+        logger.info(f'Got stream -> body: {data}, keys: {self._models.keys()}')
+        prompt = data.get("prompt")
+        model = data.get("model")
+        modelKeys = list(self._models.keys())
+        modelID = model
+        for item in modelKeys:
+            logger.info(f"_reverse_prefix(item): {_reverse_prefix(item)}")
+            if _reverse_prefix(item) == model:
+                modelID = item
+                logger.info(f"set stream model id: {item}")
+        logger.info(f"search stream model key: {modelID}")
+        return StreamingResponse(self.streamer_generate_text(modelID, prompt), media_type="text/plain")
+
+    async def streamer_generate_text(self, modelID: str, prompt: str) -> AsyncGenerator[str, None]:
+        logger.info(f'streamer_generate_text: {modelID}, prompt: "{prompt}"')
+        r: DeploymentResponseGenerator = self._models[modelID].stream_generate_texts.remote(prompt)
+        async for i in r:
+            # logger.info(f"RouterDeployment.streamer_generate_text -> yield -> {type(i)}->{i}")
+            if not isinstance(i, str):
+                continue
+            yield i
 
 @serve.deployment(
     # TODO make this configurable in llmserve run
