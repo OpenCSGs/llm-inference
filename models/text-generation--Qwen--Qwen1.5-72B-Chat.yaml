@@ -27,13 +27,13 @@ model_config:
         trust_remote_code: true
       # use_kernel: true   # for deepspped type only
       # max_tokens: 1536   # for deepspped type only
-    pipeline: defaulttransformers
-    # pipeline: default
+    # pipeline: defaulttransformers
+    pipeline: default
   generation:
     max_batch_size: 1
     batch_wait_timeout_s: 0
     generate_kwargs:
-      bos_token_id: 151643
+      # bos_token_id: 151643
       # pad_token_id: 151643,
       # eos_token_id: [151645, 151643],
       do_sample: false
