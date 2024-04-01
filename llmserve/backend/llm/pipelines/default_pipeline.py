@@ -12,6 +12,12 @@ from ._base import BasePipeline
 from .processors import StopOnTokens
 from .utils import construct_prompts, truncate_to_first_stop_token
 
+from typing import AsyncGenerator, Generator
+import asyncio
+from transformers import TextIteratorStreamer
+from threading import Thread
+from queue import Empty
+
 logger = get_logger(__name__)
 
 
@@ -160,3 +166,31 @@ class DefaultPipeline(BasePipeline):
             response.generation_time = model_outputs["generation_time"]
             response.postprocessing_time = et
         return decoded
+
+    def streamGenerate(self, prompt: str, **generate_kwargs) -> Generator[str, None, None]:
+        logger.info(f"DefaultPipeline.streamGenerate with generate_kwargs: {generate_kwargs}")
+        streamer = TextIteratorStreamer(self.tokenizer, timeout=0, skip_prompt=True, skip_special_tokens=True)
+        input_ids = self.tokenizer([prompt], return_tensors="pt")
+        # generation_kwargs = dict(input_ids, streamer=streamer, max_new_tokens=20)
+        max_new_tokens = 256
+        if generate_kwargs["max_new_tokens"]:
+            max_new_tokens = generate_kwargs["max_new_tokens"]
+        generation_kwargs = dict(input_ids, streamer=streamer, max_new_tokens=max_new_tokens)
+        thread = Thread(target=self.model.generate, kwargs=generation_kwargs)
+        thread.start()
+        while True:
+            try:
+                for token in streamer:
+                    logger.info(f'DefaultPipeline.streamGenerate -> Yield -> "{token}" -> "{type(token)}"')
+                    yield token
+                break
+            except Empty:
+                asyncio.sleep(0.001)
+        
+        # start = 0
+        # while True:
+        #     val = prompt + str(start)
+        #     logger.info(f"PredictionWorker.worker_stream_generate_texts -> yield -> {val}")
+        #     yield val
+        #     start += 1
+        #     asyncio.sleep(1)

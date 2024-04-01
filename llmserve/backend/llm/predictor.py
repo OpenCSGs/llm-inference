@@ -14,6 +14,8 @@ from llmserve.backend.llm.utils import (
 from llmserve.backend.logger import get_logger
 from llmserve.backend.server.models import Args, Prompt
 
+from typing import AsyncGenerator, Generator
+
 initialize_node_remote = ray.remote(initialize_node)
 logger = get_logger(__name__)
 
@@ -58,7 +60,6 @@ class LLMPredictor:
             self.engine = get_engine_cls_by_name(engine_name)(
                 args = self.args
             )
-
 
             self.new_worker_group = await self._create_worker_group(
                 scaling_config, pg_timeout_s=pg_timeout_s
@@ -179,3 +180,9 @@ class LLMPredictor:
     # Called by Serve to check the replica's health.
     async def check_health(self):
         self.engine.check_health()
+        
+    async def stream_generate_texts(self, prompt: str) -> Generator[str, None, None]: # type: ignore
+        logger.info(f"call LLMPredictor.stream_generate_texts")
+        for s in self.engine.stream_generate_texts(prompt):
+            logger.info(f"LLMPredictor.stream_generate_texts -> yield ->{s}")
+            yield s
