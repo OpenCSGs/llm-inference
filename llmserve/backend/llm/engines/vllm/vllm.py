@@ -16,6 +16,7 @@ import time
 import uuid
 import ray
 from llmserve.backend.server.utils import render_gradio_params
+import json
 
 
 from vllm.outputs import RequestOutput
@@ -163,9 +164,22 @@ class VllmEngine(LLMEngine):
 
         st = time.monotonic()
         request_id = str(uuid.uuid4())
+        tokenizer = self.engine.engine.tokenizer
+        prompt_text = inputs[0]
+
+        try:
+            prompt_text_bak = prompt_text
+            prompt_text = json.loads(prompt_text, strict=False)
+            prompt_text = tokenizer.apply_chat_template(prompt_text, tokenize=False, add_generation_prompt=True)
+        except Exception as ex:
+            logger.warn(f"Exception apply_chat_template: {ex}")
+            logger.info("Seems no chat template from user or the model donot has a 'chat template'")
+            prompt_text = prompt_text_bak
+
+        logger.info(f"final prompt is: {prompt_text}")
         # Construct a results generator from VLLM
         results_generator: AsyncIterator[RequestOutput] = self.engine.generate(
-            inputs[0],
+            prompt_text,
             self._parse_sampling_params(sampling_params),
             request_id,
         )
