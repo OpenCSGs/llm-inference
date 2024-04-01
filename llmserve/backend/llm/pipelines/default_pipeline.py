@@ -56,11 +56,11 @@ class DefaultPipeline(BasePipeline):
 
         try:
             prompt_text_bak = prompt_text
-            logger.error(f"call json.loads")
+            logger.info(f"call json.loads")
             # for p in prompt_text:
             #     logger.info(f"{p}")
             prompt_text = [json.loads(prompt, strict=False) for prompt in prompt_text]
-            logger.error(f"call tokenizer.apply_chat_template")
+            logger.info(f"call tokenizer.apply_chat_template")
             prompt_text = [self.tokenizer.apply_chat_template(prompt_obj, tokenize=False, add_generation_prompt=True) for prompt_obj in prompt_text]
         except Exception as ex:
             logger.error(f"Exception apply_chat_template: {ex}")
