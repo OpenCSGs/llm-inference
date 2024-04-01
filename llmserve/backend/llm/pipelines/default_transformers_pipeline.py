@@ -144,7 +144,7 @@ class DefaultTransformersPipeline(BasePipeline):
         if isinstance(self.pipeline, transformers.pipelines.text_generation.TextGenerationPipeline):
             try:
                 prompt_text_bak = prompt_text
-                prompt_text = [json.loads(prompt) for prompt in prompt_text]
+                prompt_text = [json.loads(prompt, strict=False) for prompt in prompt_text]
                 prompt_text = [self.tokenizer.apply_chat_template(prompt_obj, tokenize=False, add_generation_prompt=True) for prompt_obj in prompt_text]
             except:
                 logger.info("Seems no chat template from user or the model donot has a 'chat template'")
