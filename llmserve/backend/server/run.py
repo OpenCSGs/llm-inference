@@ -133,15 +133,6 @@ def llm_experimental(args: Union[str, LLMApp, List[Union[LLMApp, str]]]):
     return (ExperimentalDeployment.bind(deployment, model), serve_conf)  # pylint:disable=no-member
 
 
-def llm_application(args):
-    """This is a simple wrapper for LLM Server
-    That is compatible with the yaml config file format
-
-    """
-    serve_args = ServeArgs.parse_obj(args)
-    return llm_server(serve_args.models)[0]
-
-
 def run(models: Union[LLMApp, str], appname: str = None, port: int = DEFAULT_HTTP_PORT):
     """Run the LLM Server on the local Ray Cluster
 
