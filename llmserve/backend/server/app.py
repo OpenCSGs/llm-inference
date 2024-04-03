@@ -159,7 +159,6 @@ class LLMDeployment(LLMPredictor):
     @property
     def max_batch_size(self):
         return (self.args.model_config.generation.max_batch_size if self.args.model_config.generation else 1)
-        # return 1
 
     @property
     def batch_wait_timeout_s(self):
@@ -194,29 +193,11 @@ class LLMDeployment(LLMPredictor):
         with async_timeout.timeout(GATEWAY_TIMEOUT_S):
             text = await self.generate_text_batch(
                 prompt,
-                # [prompt],
-                # priority=QueuePriority.GENERATE_TEXT,
                 # start_timestamp=start_timestamp,
             )
             logger.info(f"generated text: {text}")
             # return text[0]
             return text
-
-    # no need anymore, will be delete soon
-    async def generate(self, prompt: Prompt):
-        time.time()
-        logger.info(prompt)
-        logger.info(self.get_max_batch_size())
-        logger.info(self.get_batch_wait_timeout_s())
-        with async_timeout.timeout(GATEWAY_TIMEOUT_S):
-            text = await self.generate_text_batch(
-                prompt,
-                # [prompt],
-                # priority=QueuePriority.GENERATE_TEXT,
-                # start_timestamp=start_timestamp,
-            )
-        return text
-        # return text[0]
 
     @app.post("/batch", include_in_schema=False)
     async def batch_generate_text(self, prompts: List[Prompt]):
@@ -229,7 +210,6 @@ class LLMDeployment(LLMPredictor):
                 *[
                     self.generate_text_batch(
                         prompt,
-                        # priority=QueuePriority.BATCH_GENERATE_TEXT,
                         # start_timestamp=start_timestamp,
                     )
                     for prompt in prompts
@@ -333,7 +313,7 @@ class RouterDeployment:
     async def predict(self, model: str, prompt: Union[Prompt, List[Prompt]]) -> Union[Dict[str, Any], List[Dict[str, Any]], List[Any]]:
         logger.info(f"url: {model}, keys: {self._models.keys()}")
         modelKeys = list(self._models.keys())
-        # model = _replace_prefix(model)
+
         modelID = model
         for item in modelKeys:
             logger.info(f"_reverse_prefix(item): {_reverse_prefix(item)}")
@@ -341,12 +321,14 @@ class RouterDeployment:
                 modelID = item
                 logger.info(f"set modelID: {item}")
         logger.info(f"search model key {modelID}")
+
         if isinstance(prompt, Prompt):
             results = await asyncio.gather(*[self._models[modelID].generate_text.remote(prompt)])
         elif isinstance(prompt, list):
             results = await asyncio.gather(*[self._models[modelID].batch_generate_text.remote(prompt)])
         else:
             raise Exception("Invaid prompt format.")
+        
         logger.info(f"{results}")
         return results[0]
 
