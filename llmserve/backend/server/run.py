@@ -78,8 +78,12 @@ def llm_server(args: Union[str, LLMApp, List[Union[LLMApp, str]]]):
             user_config=user_config,
             **deployment_config,
         ).bind()
-    # test = []
-    return RouterDeployment.bind(deployments, model_configs)  # pylint:disable=no-member
+
+    return RouterDeployment.options(
+        name=_reverse_prefix(model.model_config.model_id) + "-route",
+        max_concurrent_queries=max_concurrent_queries,
+        **deployment_config,
+    ).bind(deployments, model_configs)  # pylint:disable=no-member
 
 
 def llm_experimental(args: Union[str, LLMApp, List[Union[LLMApp, str]]]):
