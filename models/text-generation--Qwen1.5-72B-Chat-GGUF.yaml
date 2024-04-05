@@ -15,7 +15,7 @@ model_config:
   warmup: True
   model_task: text-generation
   model_id: Qwen/Qwen1.5-72B-Chat-GGUF
-  max_input_words: 1024
+  max_input_words: 512
   initialization:
     s3_mirror_config:
       bucket_uri: /data/models/Qwen1.5-72B-Chat-GGUF/
@@ -24,14 +24,15 @@ model_config:
       model_filename: qwen1_5-72b-chat-q5_k_m.gguf
       model_init_kwargs:
         test: true
+        n_gpu_layers: -1
     pipeline: llamacpp
   generation:
-    max_batch_size: 2
+    max_batch_size: 1
     batch_wait_timeout_s: 0
     generate_kwargs:
       max_tokens: 512
       echo: true
-    prompt_format: '[{{"role": "system", "content": "You are a friendly chatbot who always responds in the style of a pirate"}},{{"role": "user", "content": "{instruction}"}}]'
+    prompt_format: '[{{"role": "system", "content": "You are a helpful assistant."}},{{"role": "user", "content": "{instruction}"}}]'
     stopping_sequences: ["\n"]
 scaling_config:
   num_workers: 1

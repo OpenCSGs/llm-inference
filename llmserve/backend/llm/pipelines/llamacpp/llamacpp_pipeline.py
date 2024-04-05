@@ -106,11 +106,10 @@ class LlamaCppPipeline(StreamingPipeline):
         return generate_kwargs
 
     def __call__(self, inputs: List[str], **kwargs) -> List[Response]:
-        logger.info(inputs)
-        inputs = construct_prompts(
-            inputs, prompt_format=self.prompt_format)
-
-        logger.info(inputs)
+        logger.info(f"prompt_format: {self.prompt_format}")
+        logger.info(f"before construct_prompts: {inputs}")
+        inputs = construct_prompts(inputs, prompt_format=self.prompt_format)
+        logger.info(f"after construct_prompts: {inputs}")
 
         tokenized_inputs = self.tokenizer.encode(inputs)
         kwargs = self._add_default_generate_kwargs(
@@ -124,7 +123,8 @@ class LlamaCppPipeline(StreamingPipeline):
             inputs_bak = inputs
             inputs = [json.loads(prompt, strict=False) for prompt in inputs]
             chat_completion = True
-        except:
+        except Exception as ex:
+            logger.error(f"Exception apply_chat_template: {ex}")
             logger.info("Seems no chat template from user")
             inputs = inputs_bak
 

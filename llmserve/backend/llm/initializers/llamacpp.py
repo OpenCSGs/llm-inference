@@ -65,6 +65,7 @@ class LlamaCppInitializer(LLMInitializer):
         self.model_init_kwargs = model_init_kwargs
 
     def _get_model_init_kwargs(self) -> Dict[str, Any]:
+        logger.info(f"model_init_kwargs: {self.model_init_kwargs}")
         return {
             # -1 means all layers are offloaded to GPU
             "n_gpu_layers": 0 if self.device.type == "cpu" else -1,
@@ -75,10 +76,10 @@ class LlamaCppInitializer(LLMInitializer):
         }
 
     def load_model(self, model_id: str) -> "Llama":
-        logger.info(
-            f"LlamaCppInitializer downloading {model_id} : {self.model_filename}")
+        logger.info(f"LlamaCppInitializer downloading {model_id} : {self.model_filename}")
         model_path = hf_hub_download(model_id, self.model_filename)
         logger.info(f"LlamaCppInitializer Loading model {model_path}")
+        logger.info(f"model_init_kwargs: {self._get_model_init_kwargs()}")
         # Lazy import to avoid issues on CPU head node
         from llama_cpp import Llama
 
