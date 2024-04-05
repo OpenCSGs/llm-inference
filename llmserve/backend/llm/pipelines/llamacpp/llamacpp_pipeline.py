@@ -247,7 +247,7 @@ class LlamaCppPipeline(StreamingPipeline):
         max_new_tokens = 256
         if generate_kwargs["max_tokens"]:
             max_new_tokens = generate_kwargs["max_tokens"]
-        generation_kwargs = dict(messages=input_ids, streamer=streamer, max_new_tokens=max_new_tokens)
+        generation_kwargs = dict(messages=input_ids, streamer=streamer, max_tokens=max_new_tokens)
         thread = Thread(target=self.model.create_chat_completion, kwargs=generation_kwargs)
         thread.start()
         while True:
