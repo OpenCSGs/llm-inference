@@ -24,7 +24,7 @@ model_config:
       model_filename: qwen1_5-72b-chat-q5_k_m.gguf
       model_init_kwargs:
         test: true
-        n_gpu_layers: -1
+        n_gpu_layers: 1000
     pipeline: llamacpp
   generation:
     max_batch_size: 1
@@ -33,7 +33,7 @@ model_config:
       max_tokens: 512
       echo: true
     prompt_format: '[{{"role": "system", "content": "You are a helpful assistant."}},{{"role": "user", "content": "{instruction}"}}]'
-    stopping_sequences: ["\n"]
+    stopping_sequences: ["<|im_end|>"]
 scaling_config:
   num_workers: 1
   num_gpus_per_worker: 6
