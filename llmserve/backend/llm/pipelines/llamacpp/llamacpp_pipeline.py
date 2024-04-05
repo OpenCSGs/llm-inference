@@ -11,6 +11,12 @@ from .._base import StreamingPipeline
 from ..utils import decode_stopping_sequences_where_needed, construct_prompts
 import json
 
+from typing import Generator
+from transformers import TextIteratorStreamer
+from threading import Thread
+from queue import Empty
+import asyncio
+
 if TYPE_CHECKING:
     from llama_cpp import Llama, LogitsProcessorList, StoppingCriteriaList
 
@@ -116,7 +122,7 @@ class LlamaCppPipeline(StreamingPipeline):
         chat_completion = False
         try:
             inputs_bak = inputs
-            inputs = [json.loads(prompt) for prompt in inputs]
+            inputs = [json.loads(prompt, strict=False) for prompt in inputs]
             chat_completion = True
         except:
             logger.info("Seems no chat template from user")
@@ -218,3 +224,44 @@ class LlamaCppPipeline(StreamingPipeline):
             device=device,
             **kwargs,
         )
+
+    def streamGenerate(self, prompt: str, **generate_kwargs) -> Generator[str, None, None]:
+        logger.info(f"stream prompt: {prompt}")
+        inputs = construct_prompts(prompt, prompt_format=self.prompt_format)
+        logger.info(f"stream inputs: {inputs}")
+        
+        try:
+            inputs_bak = inputs
+            inputs = [json.loads(prompt, strict=False) for prompt in inputs]
+        except Exception as ex:
+            logger.error(f"Exception apply_chat_template: {ex}")
+            logger.info("Seems no chat template from user")
+            inputs = inputs_bak
+            
+        logger.info(f"Forward generate_kwargs: {generate_kwargs}")
+        logger.info(f"model inputs: {inputs}")
+        
+        streamer = TextIteratorStreamer(self.tokenizer, timeout=0, skip_prompt=True, skip_special_tokens=True)
+        # input_ids = self.tokenizer([prompt], return_tensors="pt")
+        input_ids = self.tokenizer(inputs, return_tensors="pt")
+        max_new_tokens = 256
+        if generate_kwargs["max_tokens"]:
+            max_new_tokens = generate_kwargs["max_tokens"]
+        generation_kwargs = dict(input_ids, streamer=streamer, max_new_tokens=max_new_tokens)
+        thread = Thread(target=self.model.generate, kwargs=generation_kwargs)
+        thread.start()
+        while True:
+            try:
+                for token in streamer:
+                    logger.info(f'LlamaCppPipeline.streamGenerate -> Yield -> "{token}" -> "{type(token)}"')
+                    yield token
+                break
+            except Empty:
+                asyncio.sleep(0.001)
+        # streaming sample for test
+        # start = 0
+        # while True:
+        #     val = prompt + str(start)
+        #     logger.info(f"LlamaCppPipeline.streamGenerate -> yield -> {val}")
+        #     yield val
+        #     start += 1
