@@ -411,7 +411,10 @@ class ExperimentalDeployment(GradioIngress):
         else:
             prompts = args[0]
         logger.info(f"ExperimentalDeployment query.prompts {prompts}")
-        results = await asyncio.gather(*[(self._model.generate_text.remote(Prompt(prompt=prompts, use_prompt_format=False)))])
+        use_prompt_format = False
+        if self._model_configuration.model_config.generation.prompt_format:
+            use_prompt_format = True
+        results = await asyncio.gather(*[(self._model.generate_text.remote(Prompt(prompt=prompts, use_prompt_format=use_prompt_format)))])
         logger.info(f"ExperimentalDeployment query.results {results}")
         results = results[0]
         return results.generated_text
