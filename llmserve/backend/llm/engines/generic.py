@@ -119,8 +119,11 @@ def init_model(
         try:
             logger.info("start to test with single prompt")
             logger.info(f"warmpup prompt is: {warmup_inputs}")
+            use_prompt_format=False
+            if llm_config.generation.prompt_format:
+                use_prompt_format=True
             resp = generate(
-                [Prompt(prompt=warmup_inputs, use_prompt_format=False)],
+                [Prompt(prompt=warmup_inputs, use_prompt_format=use_prompt_format)],
                 pipeline,
                 **generate_kwargs,
             )
