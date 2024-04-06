@@ -241,9 +241,8 @@ class LlamaCppPipeline(StreamingPipeline):
             
         logger.info(f"stream generate_kwargs: {generate_kwargs}")
         logger.info(f"model inputs: {inputs}")
-        
+        generate_kwargs.pop('stopping_sequences', None)
         if chat_completion:
-            generate_kwargs.pop('stopping_sequences', None)
             logger.info(f"chat generate_kwargs: {generate_kwargs}")
             output = self.model.create_chat_completion(messages=inputs[0], stream=True, **generate_kwargs)
             for chunk in output:
@@ -256,12 +255,17 @@ class LlamaCppPipeline(StreamingPipeline):
                     val = delta['content']
                 yield val
         else:
-            input_ids = self.model.tokenizer(inputs)
+            generate_kwargs.pop('max_tokens', None)
+            input_ids = self.tokenizer.encode(inputs[0])
+            # logger.info(f"model generate : {input_ids}")
+            logger.info(f"generate_kwargs: {generate_kwargs}")
             output = self.model.generate(tokens=input_ids, **generate_kwargs)
             for token in output:
                 val = self.model.detokenize([token])
-                logger.info(f'LlamaCppPipeline -> generate -> Yield -> "{val}" -> "{type(val)}"')
-                yield val
+                # logger.info(f'LlamaCppPipeline -> generate -> Yield -> "{val}" -> "{type(val)}"')
+                chunk = val.decode('utf-8')
+                logger.info(f'LlamaCppPipeline -> generate -> Yield -> "{chunk}"')
+                yield chunk
 
         # streaming sample for test
         # start = 0
