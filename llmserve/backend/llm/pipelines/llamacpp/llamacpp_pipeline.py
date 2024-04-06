@@ -11,6 +11,12 @@ from .._base import StreamingPipeline
 from ..utils import decode_stopping_sequences_where_needed, construct_prompts
 import json
 
+from typing import Generator
+from transformers import TextIteratorStreamer
+from threading import Thread
+from queue import Empty
+import asyncio
+
 if TYPE_CHECKING:
     from llama_cpp import Llama, LogitsProcessorList, StoppingCriteriaList
 
@@ -100,11 +106,10 @@ class LlamaCppPipeline(StreamingPipeline):
         return generate_kwargs
 
     def __call__(self, inputs: List[str], **kwargs) -> List[Response]:
-        logger.info(inputs)
-        inputs = construct_prompts(
-            inputs, prompt_format=self.prompt_format)
-
-        logger.info(inputs)
+        logger.info(f"prompt_format: {self.prompt_format}")
+        logger.info(f"before construct_prompts: {inputs}")
+        inputs = construct_prompts(inputs, prompt_format=self.prompt_format)
+        logger.info(f"after construct_prompts: {inputs}")
 
         tokenized_inputs = self.tokenizer.encode(inputs)
         kwargs = self._add_default_generate_kwargs(
@@ -116,9 +121,10 @@ class LlamaCppPipeline(StreamingPipeline):
         chat_completion = False
         try:
             inputs_bak = inputs
-            inputs = [json.loads(prompt) for prompt in inputs]
+            inputs = [json.loads(prompt, strict=False) for prompt in inputs]
             chat_completion = True
-        except:
+        except Exception as ex:
+            logger.error(f"Exception apply_chat_template: {ex}")
             logger.info("Seems no chat template from user")
             inputs = inputs_bak
 
@@ -218,3 +224,49 @@ class LlamaCppPipeline(StreamingPipeline):
             device=device,
             **kwargs,
         )
+
+    def streamGenerate(self, prompt: str, **generate_kwargs) -> Generator[str, None, None]:
+        logger.info(f"stream prompt: {prompt}")
+        inputs = construct_prompts(prompt, prompt_format=self.prompt_format)
+        logger.info(f"stream inputs: {inputs}")
+        chat_completion = False
+        try:
+            inputs_bak = inputs
+            inputs = [json.loads(prompt, strict=False) for prompt in inputs]
+            chat_completion = True
+        except Exception as ex:
+            logger.error(f"Exception apply_chat_template: {ex}")
+            logger.info("Seems no chat template from user")
+            inputs = inputs_bak
+            
+        logger.info(f"stream generate_kwargs: {generate_kwargs}")
+        logger.info(f"model inputs: {inputs}")
+        
+        if chat_completion:
+            generate_kwargs.pop('stopping_sequences', None)
+            logger.info(f"chat generate_kwargs: {generate_kwargs}")
+            output = self.model.create_chat_completion(messages=inputs[0], stream=True, **generate_kwargs)
+            for chunk in output:
+                logger.info(f'LlamaCppPipeline -> create_chat_completion -> Yield -> "{chunk}" -> "{type(chunk)}"')
+                delta = chunk['choices'][0]['delta']
+                val = ''
+                if 'role' in delta:
+                    val = ''
+                elif 'content' in delta:
+                    val = delta['content']
+                yield val
+        else:
+            input_ids = self.model.tokenizer(inputs)
+            output = self.model.generate(tokens=input_ids, **generate_kwargs)
+            for token in output:
+                val = self.model.detokenize([token])
+                logger.info(f'LlamaCppPipeline -> generate -> Yield -> "{val}" -> "{type(val)}"')
+                yield val
+
+        # streaming sample for test
+        # start = 0
+        # while True:
+        #     val = prompt + str(start)
+        #     logger.info(f"LlamaCppPipeline.streamGenerate -> yield -> {val}")
+        #     yield val
+        #     start += 1

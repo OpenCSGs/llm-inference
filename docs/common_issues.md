@@ -4,6 +4,16 @@
 
 Transformer version should be 4.33.3.
 
+## Use Llamacpp with GPU
+
+By default `llama-cpp-python` was installed without GPU support. 
+
+Refer repo [llama-cpp-python](https://github.com/abetlen/llama-cpp-python) to reinstall package `llama-cpp-python` for GPU support
+
+Links for GPU:
+- https://github.com/abetlen/llama-cpp-python/issues/509#issuecomment-1739098588
+- https://github.com/abetlen/llama-cpp-python/issues/627#issuecomment-1722495987
+
 ## Launch model by Ray Job API
 
 ```

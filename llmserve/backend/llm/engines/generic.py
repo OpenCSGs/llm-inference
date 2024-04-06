@@ -120,7 +120,7 @@ def init_model(
             logger.info("start to test with single prompt")
             logger.info(f"warmpup prompt is: {warmup_inputs}")
             resp = generate(
-                [Prompt(prompt=warmup_inputs, use_prompt_format=False)],
+                [Prompt(prompt=warmup_inputs, use_prompt_format=True)],
                 pipeline,
                 **generate_kwargs,
             )
@@ -287,7 +287,7 @@ class PredictionWorker(TorchDistributedWorker):
     async def worker_stream_generate_texts(self, prompt: str, **kwargs) -> Generator[str, None, None]: # type: ignore
         logger.info(f"Call PredictionWorker.worker_stream_generate_texts with kwargs: {kwargs}")
         for s in self.generator.streamGenerate(prompt, **kwargs):
-            logger.info(f"PredictionWorker.worker_stream_generate_texts -> yield ->{s}")
+            # logger.info(f"PredictionWorker.worker_stream_generate_texts -> yield ->{s}")
             yield s
     
 class GenericEngine(LLMEngine):
@@ -375,7 +375,7 @@ class GenericEngine(LLMEngine):
             else:
                 return prompts[slice_size * worker_index: slice_size * worker_index + slice_size]
 
-        logger.info('LLM Predictor do async predict')
+        logger.info('LLM GenericEngine do async predict')
 
         async with lock:
             # prediction = (
