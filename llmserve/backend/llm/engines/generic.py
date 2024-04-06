@@ -287,7 +287,7 @@ class PredictionWorker(TorchDistributedWorker):
     async def worker_stream_generate_texts(self, prompt: str, **kwargs) -> Generator[str, None, None]: # type: ignore
         logger.info(f"Call PredictionWorker.worker_stream_generate_texts with kwargs: {kwargs}")
         for s in self.generator.streamGenerate(prompt, **kwargs):
-            logger.info(f"PredictionWorker.worker_stream_generate_texts -> yield ->{s}")
+            # logger.info(f"PredictionWorker.worker_stream_generate_texts -> yield ->{s}")
             yield s
     
 class GenericEngine(LLMEngine):
