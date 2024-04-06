@@ -55,7 +55,7 @@ setup(
             "transformers==4.39.1",
         ],
         "vllm": [
-            "vllm==0.2.7",
+            "vllm>=0.2.0,<0.2.6",
         ],
         "frontend": [
             "gradio",
