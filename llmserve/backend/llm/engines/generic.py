@@ -375,7 +375,7 @@ class GenericEngine(LLMEngine):
             else:
                 return prompts[slice_size * worker_index: slice_size * worker_index + slice_size]
 
-        logger.info('LLM Predictor do async predict')
+        logger.info('LLM GenericEngine do async predict')
 
         async with lock:
             # prediction = (
