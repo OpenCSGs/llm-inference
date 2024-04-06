@@ -229,10 +229,11 @@ class LlamaCppPipeline(StreamingPipeline):
         logger.info(f"stream prompt: {prompt}")
         inputs = construct_prompts(prompt, prompt_format=self.prompt_format)
         logger.info(f"stream inputs: {inputs}")
-        
+        chat_completion = False
         try:
             inputs_bak = inputs
             inputs = [json.loads(prompt, strict=False) for prompt in inputs]
+            chat_completion = True
         except Exception as ex:
             logger.error(f"Exception apply_chat_template: {ex}")
             logger.info("Seems no chat template from user")
@@ -247,8 +248,13 @@ class LlamaCppPipeline(StreamingPipeline):
         max_new_tokens = 256
         if generate_kwargs["max_tokens"]:
             max_new_tokens = generate_kwargs["max_tokens"]
-        generation_kwargs = dict(messages=input_ids, streamer=streamer, max_tokens=max_new_tokens)
-        thread = Thread(target=self.model.create_chat_completion, kwargs=generation_kwargs)
+        thread = None
+        if chat_completion:
+            generation_kwargs = dict(messages=input_ids, streamer=streamer, max_tokens=max_new_tokens)
+            thread = Thread(target=self.model.create_chat_completion, kwargs=generation_kwargs)
+        else:
+            generation_kwargs = dict(input_ids, streamer=streamer, max_new_tokens=max_new_tokens)
+            thread = Thread(target=self.model.generate, kwargs=generation_kwargs)
         thread.start()
         while True:
             try:

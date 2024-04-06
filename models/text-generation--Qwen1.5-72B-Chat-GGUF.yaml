@@ -17,14 +17,14 @@ model_config:
   model_id: Qwen/Qwen1.5-72B-Chat-GGUF
   max_input_words: 512
   initialization:
-    s3_mirror_config:
-      bucket_uri: /data/models/Qwen1.5-72B-Chat-GGUF/
+    # s3_mirror_config:
+      # bucket_uri: /data/models/Qwen1.5-72B-Chat-GGUF/
     initializer:
       type: LlamaCpp
       model_filename: qwen1_5-72b-chat-q5_k_m.gguf
       model_init_kwargs:
         test: true
-        n_gpu_layers: 1000
+        n_gpu_layers: -1
     pipeline: llamacpp
   generation:
     max_batch_size: 1
