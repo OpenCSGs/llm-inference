@@ -32,6 +32,7 @@ model_config:
     batch_wait_timeout_s: 0
     generate_kwargs:
       max_tokens: 512
+      echo: True
     prompt_format: '[{{"role": "system", "content": "You are a helpful assistant."}},{{"role": "user", "content": "{instruction}"}}]'
     stopping_sequences: ["<|im_end|>"]
 scaling_config:
