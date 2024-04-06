@@ -239,31 +239,30 @@ class LlamaCppPipeline(StreamingPipeline):
             logger.info("Seems no chat template from user")
             inputs = inputs_bak
             
-        logger.info(f"Forward generate_kwargs: {generate_kwargs}")
+        logger.info(f"stream generate_kwargs: {generate_kwargs}")
         logger.info(f"model inputs: {inputs}")
         
-        streamer = TextIteratorStreamer(self.tokenizer, timeout=0, skip_prompt=True, skip_special_tokens=True)
-        # input_ids = self.tokenizer([prompt], return_tensors="pt")
-        input_ids = self.tokenizer(inputs, return_tensors="pt")
-        max_new_tokens = 256
-        if generate_kwargs["max_tokens"]:
-            max_new_tokens = generate_kwargs["max_tokens"]
-        thread = None
         if chat_completion:
-            generation_kwargs = dict(messages=input_ids, streamer=streamer, max_tokens=max_new_tokens)
-            thread = Thread(target=self.model.create_chat_completion, kwargs=generation_kwargs)
+            generate_kwargs.pop('stopping_sequences', None)
+            logger.info(f"chat generate_kwargs: {generate_kwargs}")
+            output = self.model.create_chat_completion(messages=inputs[0], stream=True, **generate_kwargs)
+            for chunk in output:
+                logger.info(f'LlamaCppPipeline -> create_chat_completion -> Yield -> "{chunk}" -> "{type(chunk)}"')
+                delta = chunk['choices'][0]['delta']
+                val = ''
+                if 'role' in delta:
+                    val = ''
+                elif 'content' in delta:
+                    val = delta['content']
+                yield val
         else:
-            generation_kwargs = dict(input_ids, streamer=streamer, max_new_tokens=max_new_tokens)
-            thread = Thread(target=self.model.generate, kwargs=generation_kwargs)
-        thread.start()
-        while True:
-            try:
-                for token in streamer:
-                    logger.info(f'LlamaCppPipeline.streamGenerate -> Yield -> "{token}" -> "{type(token)}"')
-                    yield token
-                break
-            except Empty:
-                asyncio.sleep(0.001)
+            input_ids = self.model.tokenizer(inputs)
+            output = self.model.generate(tokens=input_ids, **generate_kwargs)
+            for token in output:
+                val = self.model.detokenize([token])
+                logger.info(f'LlamaCppPipeline -> generate -> Yield -> "{val}" -> "{type(val)}"')
+                yield val
+
         # streaming sample for test
         # start = 0
         # while True:
