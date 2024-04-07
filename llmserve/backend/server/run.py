@@ -80,7 +80,7 @@ def llm_server(args: Union[str, LLMApp, List[Union[LLMApp, str]]]):
         ).bind()
 
     return RouterDeployment.options(
-        name=_reverse_prefix(model.model_config.model_id) + "-route",
+        name=('+'.join([_reverse_prefix(model.model_config.model_id) for model in models])) + "-router",
         max_concurrent_queries=max_concurrent_queries,
         **deployment_config,
     ).bind(deployments, model_configs)  # pylint:disable=no-member
