@@ -169,7 +169,11 @@ class DefaultPipeline(BasePipeline):
 
     def streamGenerate(self, prompt: str, **generate_kwargs) -> Generator[str, None, None]:
         logger.info(f"DefaultPipeline.streamGenerate with generate_kwargs: {generate_kwargs}")
-        streamer = TextIteratorStreamer(self.tokenizer, timeout=0, skip_prompt=True, skip_special_tokens=True)
+        # timeout=0  will dramatic slow down the speed of generator, the root caused still unknow
+        streamer = TextIteratorStreamer(self.tokenizer,
+                                        # timeout=0,
+                                        skip_prompt=True,
+                                        skip_special_tokens=True)
         input_ids = self.tokenizer([prompt], return_tensors="pt")
         # generation_kwargs = dict(input_ids, streamer=streamer, max_new_tokens=20)
         max_new_tokens = 256
