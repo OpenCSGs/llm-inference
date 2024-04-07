@@ -246,13 +246,14 @@ class LlamaCppPipeline(StreamingPipeline):
             logger.info(f"chat generate_kwargs: {generate_kwargs}")
             output = self.model.create_chat_completion(messages=inputs[0], stream=True, **generate_kwargs)
             for chunk in output:
-                logger.info(f'LlamaCppPipeline -> create_chat_completion -> Yield -> "{chunk}" -> "{type(chunk)}"')
+                # logger.info(f'LlamaCppPipeline -> create_chat_completion -> Yield -> "{chunk}" -> "{type(chunk)}"')
                 delta = chunk['choices'][0]['delta']
                 val = ''
                 if 'role' in delta:
                     val = ''
                 elif 'content' in delta:
                     val = delta['content']
+                logger.info(f'LlamaCppPipeline -> create_chat_completion -> Yield -> "{val}"')
                 yield val
         else:
             logger.info(f"generate_kwargs: {generate_kwargs}")
