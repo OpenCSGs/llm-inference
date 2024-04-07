@@ -242,6 +242,7 @@ class LlamaCppPipeline(StreamingPipeline):
         logger.info(f"stream generate_kwargs: {generate_kwargs}")
         logger.info(f"model inputs: {inputs}")
         generate_kwargs.pop('stopping_sequences', None)
+        generate_kwargs.pop('echo', None)
         if chat_completion:
             logger.info(f"chat generate_kwargs: {generate_kwargs}")
             output = self.model.create_chat_completion(messages=inputs[0], stream=True, **generate_kwargs)
