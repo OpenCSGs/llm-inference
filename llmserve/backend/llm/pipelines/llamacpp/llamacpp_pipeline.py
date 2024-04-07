@@ -258,8 +258,9 @@ class LlamaCppPipeline(StreamingPipeline):
             logger.info(f"generate_kwargs: {generate_kwargs}")
             output = self.model(inputs[0], stream=True, **generate_kwargs)
             for token in output:
-                logger.info(f'LlamaCppPipeline -> generate -> Yield -> "{token}" -> "{type(token)}"')
+                # logger.info(f'LlamaCppPipeline -> generate -> Yield -> "{token}" -> "{type(token)}"')
                 chunk = token["choices"][0]["text"].replace("\u200b", "")
+                logger.info(f'LlamaCppPipeline -> generate -> Yield -> "{chunk}"')
                 yield chunk
 
         # streaming sample for test
