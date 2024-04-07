@@ -353,12 +353,10 @@ class RouterDeployment:
     async def models(self) -> List[str]:
         return list(self._models.keys())
 
-    @app.post("/run/stream")
-    def streamer(self, data: dict) -> StreamingResponse:
-        logger.info(f"data: {data}")
-        logger.info(f'Got stream -> body: {data}, keys: {self._models.keys()}')
-        prompt = data.get("prompt")
-        model = data.get("model")
+    @app.post("/{model}/run/stream") 
+    def streamer(self, model: str, prompt: Union[Prompt, List[Prompt]]) -> StreamingResponse:
+        logger.info(f"url: {model}, keys: {self._models.keys()}")
+            
         modelKeys = list(self._models.keys())
         modelID = model
         for item in modelKeys:
@@ -366,6 +364,7 @@ class RouterDeployment:
             if _reverse_prefix(item) == model:
                 modelID = item
                 logger.info(f"set stream model id: {item}")
+
         logger.info(f"search stream model key: {modelID}")
         return StreamingResponse(self.streamer_generate_text(modelID, prompt), media_type="text/plain")
 
