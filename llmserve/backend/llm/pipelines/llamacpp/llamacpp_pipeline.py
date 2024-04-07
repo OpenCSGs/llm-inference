@@ -255,15 +255,11 @@ class LlamaCppPipeline(StreamingPipeline):
                     val = delta['content']
                 yield val
         else:
-            generate_kwargs.pop('max_tokens', None)
-            input_ids = self.tokenizer.encode(inputs[0])
-            # logger.info(f"model generate : {input_ids}")
             logger.info(f"generate_kwargs: {generate_kwargs}")
-            output = self.model.generate(tokens=input_ids, **generate_kwargs)
+            output = self.model(inputs[0], stream=True, **generate_kwargs)
             for token in output:
-                val = self.model.detokenize([token])
-                # logger.info(f'LlamaCppPipeline -> generate -> Yield -> "{val}" -> "{type(val)}"')
-                chunk = val.decode('utf-8')
+                # logger.info(f'LlamaCppPipeline -> generate -> Yield -> "{token}" -> "{type(token)}"')
+                chunk = token["choices"][0]["text"].replace("\u200b", "")
                 logger.info(f'LlamaCppPipeline -> generate -> Yield -> "{chunk}"')
                 yield chunk
 
