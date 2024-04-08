@@ -366,16 +366,9 @@ class RouterDeployment:
                 logger.info(f"set stream model id: {item}")
 
         logger.info(f"search stream model key: {modelID}")
-        stream_input = ''
-        if isinstance(prompt, Prompt):
-            stream_input = str(prompt.prompt)
-        elif isinstance(prompt, list):
-            stream_input = str(prompt[0].prompt)
-        else:
-            raise Exception("Invaid prompt format.")
-        return StreamingResponse(self.streamer_generate_text(modelID, stream_input), media_type="text/plain")
+        return StreamingResponse(self.streamer_generate_text(modelID, prompt), media_type="text/plain")
 
-    async def streamer_generate_text(self, modelID: str, prompt: str) -> AsyncGenerator[str, None]:
+    async def streamer_generate_text(self, modelID: str, prompt: Union[Prompt, List[Prompt]]) -> AsyncGenerator[str, None]:
         logger.info(f'streamer_generate_text: {modelID}, prompt: "{prompt}"')
         r: DeploymentResponseGenerator = self._models[modelID].stream_generate_texts.remote(prompt)
         async for i in r:

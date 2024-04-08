@@ -12,7 +12,7 @@ from ray.air import ScalingConfig
 from llmserve.backend.logger import get_logger
 from llmserve.backend.server.models import Args, Prompt
 import asyncio
-from typing import AsyncGenerator, Generator
+from typing import Union, AsyncGenerator, Generator
 
 logger = get_logger(__name__)
 
@@ -67,5 +67,5 @@ class LLMEngine(ABC):
         pass
     
     @abstractmethod
-    def stream_generate_texts(self, prompt: str) -> Generator[str, None, None]:
+    def stream_generate_texts(self, prompt: Union[Prompt, List[Prompt]]) -> Generator[str, None, None]:
         pass
