@@ -14,7 +14,7 @@ from llmserve.backend.llm.utils import (
 from llmserve.backend.logger import get_logger
 from llmserve.backend.server.models import Args, Prompt
 
-from typing import AsyncGenerator, Generator
+from typing import AsyncGenerator, Generator, Union
 
 initialize_node_remote = ray.remote(initialize_node)
 logger = get_logger(__name__)
@@ -181,7 +181,7 @@ class LLMPredictor:
     async def check_health(self):
         self.engine.check_health()
         
-    async def stream_generate_texts(self, prompt: str) -> Generator[str, None, None]: # type: ignore
+    async def stream_generate_texts(self, prompt: Union[Prompt, List[Prompt]]) -> Generator[str, None, None]: # type: ignore
         logger.info(f"call LLMPredictor.stream_generate_texts")
         for s in self.engine.stream_generate_texts(prompt):
             logger.info(f"LLMPredictor.stream_generate_texts -> yield ->{s}")

@@ -32,7 +32,7 @@ from llmserve.backend.server.models import Args, LLMConfig, Prompt, Response
 from llmserve.backend.server.utils import render_gradio_params
 from ._base import LLMEngine
 
-from typing import AsyncGenerator, Generator
+from typing import AsyncGenerator, Generator, Union
 from queue import Empty
 from transformers import AutoModelForCausalLM, AutoTokenizer, TextIteratorStreamer
 from threading import Thread
@@ -284,7 +284,7 @@ class PredictionWorker(TorchDistributedWorker):
         """Ping the worker."""
         return True
     
-    async def worker_stream_generate_texts(self, prompt: str, **kwargs) -> Generator[str, None, None]: # type: ignore
+    async def worker_stream_generate_texts(self, prompt: Union[Prompt, List[Prompt]], **kwargs) -> Generator[str, None, None]: # type: ignore
         logger.info(f"Call PredictionWorker.worker_stream_generate_texts with kwargs: {kwargs}")
         for s in self.generator.streamGenerate(prompt, **kwargs):
             # logger.info(f"PredictionWorker.worker_stream_generate_texts -> yield ->{s}")
@@ -430,7 +430,7 @@ class GenericEngine(LLMEngine):
                     "Reinitializing worker group."
                 )
     
-    def stream_generate_texts(self, prompt: str) -> Generator[str, None, None]: # type: ignore
+    def stream_generate_texts(self, prompt: Union[Prompt, List[Prompt]]) -> Generator[str, None, None]: # type: ignore
         logger.info(f"GenericEngine.stream_generate_texts -> worker.length: {len(self.base_worker_group)}")
         worker0 = self.base_worker_group[0]
         for strHandle in worker0.worker_stream_generate_texts.remote(

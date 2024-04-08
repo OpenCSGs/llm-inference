@@ -5,7 +5,7 @@ import torch
 from transformers import PreTrainedModel, PreTrainedTokenizer
 
 from llmserve.backend.logger import get_logger
-from llmserve.backend.server.models import Response
+from llmserve.backend.server.models import Prompt, Response
 import json
 
 from ._base import BasePipeline
@@ -167,15 +167,22 @@ class DefaultPipeline(BasePipeline):
             response.postprocessing_time = et
         return decoded
 
-    def streamGenerate(self, prompt: str, **generate_kwargs) -> Generator[str, None, None]:
+    def streamGenerate(self, prompt: Union[Prompt, List[Prompt]], **generate_kwargs) -> Generator[str, None, None]:
         logger.info(f"DefaultPipeline.streamGenerate with generate_kwargs: {generate_kwargs}")
         # timeout=0  will dramatic slow down the speed of generator, the root caused still unknow
         streamer = TextIteratorStreamer(self.tokenizer,
                                         # timeout=0,
                                         skip_prompt=True,
                                         skip_special_tokens=True)
-        input_ids = self.tokenizer([prompt], return_tensors="pt")
-        # generation_kwargs = dict(input_ids, streamer=streamer, max_new_tokens=20)
+        prompt_inputs = []
+        if isinstance(prompt, Prompt):
+            prompt_inputs = [prompt.prompt]
+        elif isinstance(prompt, list):
+            prompt_inputs = [p.prompt for p in prompt]
+            
+        logger.info(f"DefaultPipeline.streamGenerate with prompt_inputs: {prompt_inputs}")
+        input_ids = self.tokenizer(prompt_inputs, return_tensors="pt")
+        # input_ids = self.tokenizer([prompt], return_tensors="pt")
         max_new_tokens = 256
         if generate_kwargs["max_new_tokens"]:
             max_new_tokens = generate_kwargs["max_new_tokens"]

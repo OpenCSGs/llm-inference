@@ -368,7 +368,7 @@ class RouterDeployment:
         logger.info(f"search stream model key: {modelID}")
         return StreamingResponse(self.streamer_generate_text(modelID, prompt), media_type="text/plain")
 
-    async def streamer_generate_text(self, modelID: str, prompt: str) -> AsyncGenerator[str, None]:
+    async def streamer_generate_text(self, modelID: str, prompt: Union[Prompt, List[Prompt]]) -> AsyncGenerator[str, None]:
         logger.info(f'streamer_generate_text: {modelID}, prompt: "{prompt}"')
         r: DeploymentResponseGenerator = self._models[modelID].stream_generate_texts.remote(prompt)
         async for i in r:

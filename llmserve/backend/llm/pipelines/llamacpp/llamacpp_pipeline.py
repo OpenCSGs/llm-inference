@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Any, Dict, Iterator, List, Optional, Union
 import torch
 
 from llmserve.backend.logger import get_logger
-from llmserve.backend.server.models import Response
+from llmserve.backend.server.models import Prompt, Response
 
 from ...initializers.llamacpp import LlamaCppInitializer, LlamaCppTokenizer
 from .._base import StreamingPipeline
@@ -225,7 +225,7 @@ class LlamaCppPipeline(StreamingPipeline):
             **kwargs,
         )
 
-    def streamGenerate(self, prompt: str, **generate_kwargs) -> Generator[str, None, None]:
+    def streamGenerate(self, prompt: Union[Prompt, List[Prompt]], **generate_kwargs) -> Generator[str, None, None]:
         logger.info(f"stream prompt: {prompt}")
         inputs = construct_prompts(prompt, prompt_format=self.prompt_format)
         logger.info(f"stream inputs: {inputs}")
