@@ -3,7 +3,7 @@ from .._base import LLMEngine
 import asyncio
 import torch
 import gc
-from typing import List, Optional, Any, Dict, List, Optional, AsyncIterator
+from typing import List, Optional, Any, Dict, List, Optional, AsyncIterator, Iterator
 from ray.air import ScalingConfig
 from ray.util.placement_group import PlacementGroup
 from llmserve.backend.server.models import Args, Prompt, Response
@@ -226,3 +226,13 @@ class VllmEngine(LLMEngine):
     
     async def check_health(self):
         logger.info("not implements yet...")
+
+    async def stream(
+        self,
+        prompts: List[Prompt],
+        *,
+        timeout_s: float = 60,
+        start_timestamp: Optional[float] = None,
+        lock: asyncio.Lock,
+    ) -> Iterator[List[Response]]:
+        pass

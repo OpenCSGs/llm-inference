@@ -128,6 +128,73 @@ class Response(ComputedPropertyMixin, BaseModelExtended):
     generation_time: Optional[float] = None
     postprocessing_time: Optional[float] = None
 
+    @classmethod
+    def merge_stream(cls, *responses: "Response") -> "Response":
+        """
+        Merge a stream of responses into a single response.
+
+        The generated text is concatenated. Fields are maxed, except for
+        num_generated_tokens and generation_time, which are summed.
+        """
+        if len(responses) == 1:
+            return responses[0]
+
+        generated_text = "".join(
+            [response.generated_text or "" for response in responses]
+        )
+        num_input_tokens = [
+            response.num_input_tokens
+            for response in responses
+            if response.num_input_tokens is not None
+        ]
+        num_input_tokens = max(num_input_tokens) if num_input_tokens else None
+        num_input_tokens_batch = [
+            response.num_input_tokens_batch
+            for response in responses
+            if response.num_input_tokens_batch is not None
+        ]
+        num_input_tokens_batch = (
+            max(num_input_tokens_batch) if num_input_tokens_batch else None
+        )
+        num_generated_tokens = [
+            response.num_generated_tokens
+            for response in responses
+            if response.num_generated_tokens is not None
+        ]
+        num_generated_tokens = (
+            sum(num_generated_tokens) if num_generated_tokens else None
+        )
+        num_generated_tokens_batch = [
+            response.num_generated_tokens_batch
+            for response in responses
+            if response.num_generated_tokens_batch is not None
+        ]
+        num_generated_tokens_batch = (
+            sum(num_generated_tokens_batch) if num_generated_tokens_batch else None
+        )
+        preprocessing_time = [
+            response.preprocessing_time
+            for response in responses
+            if response.preprocessing_time is not None
+        ]
+        preprocessing_time = max(preprocessing_time) if preprocessing_time else None
+        generation_time = [
+            response.generation_time
+            for response in responses
+            if response.generation_time is not None
+        ]
+        generation_time = sum(generation_time) if generation_time else None
+
+        return cls(
+            generated_text=generated_text,
+            num_input_tokens=num_input_tokens,
+            num_input_tokens_batch=num_input_tokens_batch,
+            num_generated_tokens=num_generated_tokens,
+            num_generated_tokens_batch=num_generated_tokens_batch,
+            preprocessing_time=preprocessing_time,
+            generation_time=generation_time,
+        )
+    
     @property
     def total_time(self) -> Optional[float]:
         try:
@@ -377,7 +444,6 @@ class GenerationConfig(BaseModelExtended):
 
 
 class LLMConfig(BaseModelExtended):
-    stream: bool = False # enable steaming api
     warmup: bool    # need warmup?
     model_task: str    # need verification, TODO
     model_id: str

@@ -177,12 +177,29 @@ class LLMPredictor:
         prediction = await self.engine.predict(prompts, timeout_s=timeout_s, start_timestamp=start_timestamp, lock = self._base_worker_group_lock)
         return prediction
 
+    async def _stream_async(
+        self,
+        prompts: List[Prompt],
+        *,
+        timeout_s: float = 60,
+        start_timestamp: Optional[float] = None,
+    ) -> List[str]:
+        """Generate text for a list of prompts.
+
+        Args:
+            prompts (List[Prompt]): Batch of prompts to generate text from.
+            timeout_s (float, optional): Timeout for the generation. Defaults
+                to 60. Ignored if start_timestamp is None.
+            start_timestamp (Optional[float], optional): Timestamp of when the
+                batch was created. Defaults to None. If set, will early stop
+                the generation.
+
+        Returns:
+            A list of generated texts.
+        """
+        async for s in self.engine.stream(prompts, timeout_s=timeout_s, start_timestamp=start_timestamp, lock = self._base_worker_group_lock):
+            yield s
+    
     # Called by Serve to check the replica's health.
     async def check_health(self):
         self.engine.check_health()
-        
-    async def stream_generate_texts(self, prompt: Union[Prompt, List[Prompt]]) -> Generator[str, None, None]: # type: ignore
-        logger.info(f"call LLMPredictor.stream_generate_texts")
-        for s in self.engine.stream_generate_texts(prompt):
-            logger.info(f"LLMPredictor.stream_generate_texts -> yield ->{s}")
-            yield s

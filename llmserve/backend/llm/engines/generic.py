@@ -10,7 +10,7 @@ import asyncio
 import gc
 import os
 import traceback
-from typing import List, Optional
+from typing import List, Optional, Iterator
 
 import ray
 import ray.util
@@ -21,7 +21,7 @@ from ray.air.util.torch_dist import TorchDistributedWorker
 
 from llmserve.backend.llm.initializers import get_initializer_cls_by_name
 from llmserve.backend.llm.pipelines import get_pipeline_cls_by_name
-from llmserve.backend.llm.pipelines._base import BasePipeline
+from llmserve.backend.llm.pipelines._base import BasePipeline, StreamingPipeline
 from llmserve.backend.llm.utils import (
     init_torch_dist_process_group_async,
     timeit,
@@ -171,7 +171,26 @@ def generate(
     )
     return outputs
 
-import logging
+@timeit
+def stream(
+    prompts: List[Prompt],
+    pipeline: BasePipeline,
+    **generate_kwargs,
+) -> Iterator[List[Response]]:
+    """Generate predictions using a Pipeline.
+
+    Args:
+        prompts (List[Prompt]): List of prompts.
+        pipeline (BasePipeline): Pipeline to use.
+        **generate_kwargs: Keyword arguments to pass to the pipeline's `generate` method.
+    """
+    if not isinstance(pipeline, StreamingPipeline):
+        raise RuntimeError(f"Pipeline {pipeline} does not support streaming.")
+    yield from pipeline.stream(
+        prompts,
+        **generate_kwargs,
+    )
+
 @ray.remote
 class PredictionWorker(TorchDistributedWorker):
     """A PredictionWorker is a Ray remote actor that runs a single shard of a DeepSpeed job.
@@ -277,6 +296,22 @@ class PredictionWorker(TorchDistributedWorker):
                 )
                 return responses_1 + responses_2
 
+    def stream(
+        self,
+        data: List[Prompt],
+        *,
+        timeout_s: Optional[float] = None,
+        start_timestamp: Optional[float] = None,
+        **kwargs,
+    ) -> Iterator[List[Response]]:
+        yield from stream(
+            data,
+            self.generator,
+            timeout_s=timeout_s,
+            start_timestamp=start_timestamp,
+            **kwargs,
+        )
+
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}:{self.llm_config.model_id}"
 
@@ -284,14 +319,13 @@ class PredictionWorker(TorchDistributedWorker):
         """Ping the worker."""
         return True
     
-    async def worker_stream_generate_texts(self, prompt: Union[Prompt, List[Prompt]], **kwargs) -> Generator[str, None, None]: # type: ignore
-        logger.info(f"Call PredictionWorker.worker_stream_generate_texts with kwargs: {kwargs}")
-        for s in self.generator.streamGenerate(prompt, **kwargs):
-            # logger.info(f"PredictionWorker.worker_stream_generate_texts -> yield ->{s}")
-            yield s
+    def can_stream(self) -> bool:
+        """Whether the worker can stream."""
+        return isinstance(self.generator, StreamingPipeline)
     
 class GenericEngine(LLMEngine):
     base_worker_group = None
+    can_stream = None
 
     async def launch_engine(
             self, 
@@ -338,11 +372,11 @@ class GenericEngine(LLMEngine):
                     num_gpus_per_worker=scaling_config.num_gpus_per_worker
                 )
                 for worker, local_rank in zip(worker_group, local_ranks)
-                # for worker in worker_group
             ]
         )
 
         self.base_worker_group = worker_group
+        self.can_stream = await asyncio.gather(*[worker_group[0].can_stream.remote()])
         return worker_group
 
     async def predict(
@@ -429,14 +463,45 @@ class GenericEngine(LLMEngine):
                     f"At least one prediction worker is dead. Dead workers: {dead_actors}. "
                     "Reinitializing worker group."
                 )
-    
-    def stream_generate_texts(self, prompt: Union[Prompt, List[Prompt]]) -> Generator[str, None, None]: # type: ignore
-        logger.info(f"GenericEngine.stream_generate_texts -> worker.length: {len(self.base_worker_group)}")
-        worker0 = self.base_worker_group[0]
-        for strHandle in worker0.worker_stream_generate_texts.remote(
-            prompt,
-            **self.args.model_config.generation.all_generate_kwargs if self.args.model_config.generation else {}
-        ):
-            val = ray.get(strHandle)
-            logger.info(f"GenericEngine.stream_generate_texts -> yield -> {val}")
-            yield val
+
+    async def stream(
+        self,
+        prompts: List[Prompt],
+        *,
+        timeout_s: float = 60,
+        start_timestamp: Optional[float] = None,
+        lock: asyncio.Lock,
+    ) -> Iterator[List[Response]]:
+        """Generate text for a list of prompts.
+
+        Args:
+            prompts (List[Prompt]): Batch of prompts to generate text from.
+            timeout_s (float, optional): Timeout for the generation. Defaults
+                to 60. Ignored if start_timestamp is None.
+            start_timestamp (Optional[float], optional): Timestamp of when the
+                batch was created. Defaults to None. If set, will early stop
+                the generation.
+
+        Returns:
+            A list of generated texts.
+        """
+        if self.can_stream:
+            async with lock:
+                tasks = [
+                    worker.stream.options(num_returns="streaming").remote(
+                        prompts,
+                        timeout_s=timeout_s,
+                        start_timestamp=start_timestamp,
+                        **self.args.model_config.generation.all_generate_kwargs,
+                    )
+                    for worker in self.base_worker_group
+                ]
+                async for result in tasks[0]:
+                    yield await result
+        else:
+            logger.warning(
+                f"Pipeline {self.args.model_config.initialization.pipeline} does not support streaming. Ignoring queue."
+            )
+            yield await self.predict(
+                prompts, timeout_s=timeout_s, start_timestamp=start_timestamp
+            )
