@@ -6,11 +6,11 @@ from llmserve.backend.server.models import Prompt
 
 from llmserve.backend.logger import get_logger
 
-from typing import List, Optional
+from typing import List, Optional, Iterator
 from ray.air import ScalingConfig
 
 from llmserve.backend.logger import get_logger
-from llmserve.backend.server.models import Args, Prompt
+from llmserve.backend.server.models import Args, Prompt, Response
 import asyncio
 from typing import Union, AsyncGenerator, Generator
 
@@ -67,5 +67,12 @@ class LLMEngine(ABC):
         pass
     
     @abstractmethod
-    def stream_generate_texts(self, prompt: Union[Prompt, List[Prompt]]) -> Generator[str, None, None]:
+    async def stream(
+        self,
+        prompts: List[Prompt],
+        *,
+        timeout_s: float = 60,
+        start_timestamp: Optional[float] = None,
+        lock: asyncio.Lock,
+    ) -> Iterator[List[Response]]:
         pass

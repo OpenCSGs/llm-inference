@@ -4,7 +4,7 @@ import copy
 import time
 import traceback
 import hashlib
-from typing import Any, Dict, List, Optional, Union, Callable, Annotated
+from typing import Any, Dict, List, Optional, Union, Callable, Annotated, Tuple
 
 import async_timeout
 import json
@@ -92,6 +92,9 @@ class LLMDeployment(LLMPredictor):
     def __init__(self, config: Optional[Dict[str, Any]] = None) -> None:
         logger.info('LLM Deployment initialize')
         self.args = None
+        # Keep track of requests to cancel them gracefully
+        self.requests_ids: Dict[int, bool] = {}
+        self.curr_request_id: int = 0
         super().__init__()
 
     def _should_reinit_worker_group(self, new_args: Args) -> bool:
@@ -221,6 +224,9 @@ class LLMDeployment(LLMPredictor):
         self.generate_text_batch.set_max_batch_size(new_max_batch_size)
         self.generate_text_batch.set_batch_wait_timeout_s(
             new_batch_wait_timeout_s)
+        self.stream_text_batch.set_max_batch_size(new_max_batch_size)
+        self.stream_text_batch.set_batch_wait_timeout_s(
+            new_batch_wait_timeout_s)
         logger.info(f"new_max_batch_size is {new_max_batch_size}")
         logger.info(f"new_batch_wait_timeout_s is {new_batch_wait_timeout_s}")
 
@@ -284,6 +290,137 @@ class LLMDeployment(LLMPredictor):
             return [prediction]
         return prediction[: len(prompts)]
 
+
+    # async def pre_stream_text_batch(
+    #     self,
+    #     prompt: Prompt,
+    #     request: Request,
+    #     *,
+    #     start_timestamp: Optional[Union[float, List[float]]] = None,
+    #     timeout_s: Union[float, List[float]] = GATEWAY_TIMEOUT_S - 10,
+    #     **kwargs,
+    # ) -> AsyncGenerator:
+    #     """Generate text from the given prompts in batch.
+
+    #     Args:
+    #         prompts (List[Prompt]): Batch of prompts to generate text from.
+    #         start_timestamp (Optional[float], optional): Timestamp of when the
+    #             batch was created. Defaults to None. If set, will early stop
+    #             the generation.
+    #         timeout_s (float, optional): Timeout for the generation. Defaults
+    #             to GATEWAY_TIMEOUT_S-10. Ignored if start_timestamp is None.
+    #         **kwargs: Additional arguments to pass to the batch function.
+    #     """
+    #     curr_request_id = self.curr_request_id
+    #     self.requests_ids[curr_request_id] = False
+    #     self.curr_request_id += 1
+    #     async_generator = self._generate_text_batch(
+    #         (prompt, curr_request_id),
+    #         start_timestamp=start_timestamp,
+    #         timeout_s=timeout_s,
+    #         **kwargs,
+    #     )
+    #     # The purpose of this loop is to ensure that the underlying
+    #     # generator is fully consumed even if the client disconnects.
+    #     # If the loop is not consumed, then the PredictionWorker will
+    #     # be stuck.
+    #     # TODO: Revisit this - consider catching asyncio.CancelledError
+    #     # and/or setting a Ray Event to cancel the PredictionWorker generator.
+    #     while True:
+    #         try:
+    #             future = async_generator.__anext__()
+
+    #             if not self.requests_ids[curr_request_id]:
+    #                 future = asyncio.ensure_future(future)
+    #                 done, pending = await asyncio.wait(
+    #                     (future, _until_disconnected(request)),
+    #                     return_when=asyncio.FIRST_COMPLETED,
+    #                 )
+    #                 if future in done:
+    #                     yield await future
+    #                 else:
+    #                     # We caught the disconnect
+    #                     logger.info(f"Request {curr_request_id} disconnected.")
+    #                     self.requests_ids[curr_request_id] = True
+    #             else:
+    #                 await future
+    #         except StopAsyncIteration:
+    #             break
+    #     del self.requests_ids[curr_request_id]
+
+    @serve.batch(
+        max_batch_size=18,
+        batch_wait_timeout_s=1,
+    )
+    async def stream_text_batch(
+        self,
+        prompts_and_request_ids: List[Tuple[Prompt, int]],
+        *,
+        start_timestamp: Optional[Union[float, List[float]]] = None,
+        timeout_s: Union[float, List[float]] = GATEWAY_TIMEOUT_S - 10,
+    ):
+        """Generate text from the given prompts in batch.
+
+        Args:
+            prompts (List[Prompt]): Batch of prompts to generate text from.
+            start_timestamp (Optional[float], optional): Timestamp of when the
+                batch was created. Defaults to None. If set, will early stop
+                the generation.
+            timeout_s (float, optional): Timeout for the generation. Defaults
+                to GATEWAY_TIMEOUT_S-10. Ignored if start_timestamp is None.
+        """
+        prompts, request_ids = zip(*prompts_and_request_ids)
+        # get tuple, need extract it
+        prompts_plain = [p for prompt in prompts for p in prompt]
+        request_ids_plain = list(request_ids)
+
+        if isinstance(start_timestamp, list) and start_timestamp[0]:
+            start_timestamp = min(start_timestamp)
+        elif isinstance(start_timestamp, list):
+            start_timestamp = start_timestamp[0]
+        if isinstance(timeout_s, list) and timeout_s[0]:
+            timeout_s = min(timeout_s)
+        elif isinstance(timeout_s, list):
+            timeout_s = timeout_s[0]
+
+        logger.info(
+            f"Received {len(prompts_plain)} prompts {prompts_plain}. start_timestamp {start_timestamp} timeout_s {timeout_s}"
+        )
+
+        data_ref = ray.put(prompts_plain)
+
+        while not self.base_worker_group:
+            logger.info("Waiting for worker group to be initialized...")
+            await asyncio.sleep(1)
+
+        try:
+            async for result in self._stream_async(
+                data_ref,
+                timeout_s=timeout_s,
+                start_timestamp=start_timestamp,
+            ):
+                yield [
+                    v if v is not None or self.requests_ids[id] else StopIteration
+                    for v, id in zip(result, request_ids)
+                ]
+        except RayActorError as e:
+            raise RuntimeError(
+                f"Prediction failed due to RayActorError. "
+                "This usually means that one or all prediction workers are dead. "
+                "Try again in a few minutes. "
+                f"Traceback:\n{traceback.print_exc()}"
+            ) from e
+        finally:
+            logger.info(f"Batch for {request_ids_plain} finished")
+     
+    async def stream_generate_text(self, prompt: Union[Prompt, List[Prompt]]) -> Generator[str, None, None]:
+        logger.info(f"call LLMPredictor.stream_generate_texts")
+        curr_request_id = self.curr_request_id
+        self.requests_ids[curr_request_id] = True
+        self.curr_request_id += 1
+        async for s in self.stream_text_batch((prompt, curr_request_id)):
+            yield s
+
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}:{self.args.model_config.model_id}"
 
@@ -303,11 +440,6 @@ class RouterDeployment:
         # TODO: Remove this once it is possible to reconfigure models on the fly
         self._model_configurations = model_configurations
         logger.info(f"init: _models.keys: {self._models.keys()}")
-        # logger.info(f"init model_configurations: {model_configurations}")
-        for modelkey in self._models.keys():
-            if self._model_configurations[modelkey].model_config.stream:
-                logger.info(f"Set stream=true for {modelkey}")
-                self._models[modelkey] = self._models[modelkey].options(stream=True)
 
     @app.post("/{model}/run/predict")
     async def predict(self, model: str, prompt: Union[Prompt, List[Prompt]]) -> Union[Dict[str, Any], List[Dict[str, Any]], List[Any]]:
@@ -323,9 +455,9 @@ class RouterDeployment:
         logger.info(f"search model key {modelID}")
 
         if isinstance(prompt, Prompt):
-            results = await asyncio.gather(*[self._models[modelID].generate_text.remote(prompt)])
+            results = await asyncio.gather(*[self._models[modelID].options(stream=False).generate_text.remote(prompt)])
         elif isinstance(prompt, list):
-            results = await asyncio.gather(*[self._models[modelID].batch_generate_text.remote(prompt)])
+            results = await asyncio.gather(*[self._models[modelID].options(stream=False).batch_generate_text.remote(prompt)])
         else:
             raise Exception("Invaid prompt format.")
         
@@ -370,12 +502,9 @@ class RouterDeployment:
 
     async def streamer_generate_text(self, modelID: str, prompt: Union[Prompt, List[Prompt]]) -> AsyncGenerator[str, None]:
         logger.info(f'streamer_generate_text: {modelID}, prompt: "{prompt}"')
-        r: DeploymentResponseGenerator = self._models[modelID].stream_generate_texts.remote(prompt)
+        r: DeploymentResponseGenerator = self._models[modelID].options(stream=True).stream_generate_text.remote(prompt)
         async for i in r:
-            # logger.info(f"RouterDeployment.streamer_generate_text -> yield -> {type(i)}->{i}")
-            if not isinstance(i, str):
-                continue
-            yield i
+            yield i.generated_text
 
 @serve.deployment(
     # TODO make this configurable in llmserve run

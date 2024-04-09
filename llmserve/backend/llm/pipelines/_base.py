@@ -340,15 +340,10 @@ class BasePipeline(ABC):
 
         return preprocess_params, forward_params, postprocess_params
 
-    @abstractmethod
-    def streamGenerate(self, prompt: Union[Prompt, List[Prompt]], **generate_kwargs) -> Generator[str, None, None]:
-        pass
-
 class StreamingPipeline(BasePipeline):
     def stream(
         self,
-        inputs: List[str],
-        queue: Queue,
+        inputs: List[Union[str, Prompt]],
         **kwargs,
     ) -> Iterator[List[Response]]:
         raise NotImplementedError()
