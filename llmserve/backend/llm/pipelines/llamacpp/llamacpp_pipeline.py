@@ -11,12 +11,6 @@ from .._base import StreamingPipeline
 from ..utils import decode_stopping_sequences_where_needed, construct_prompts
 import json
 
-from typing import Generator
-from transformers import TextIteratorStreamer
-from threading import Thread
-from queue import Empty
-import asyncio
-
 if TYPE_CHECKING:
     from llama_cpp import Llama, LogitsProcessorList, StoppingCriteriaList
 
@@ -104,97 +98,12 @@ class LlamaCppPipeline(StreamingPipeline):
         return generate_kwargs
 
     def __call__(self, inputs: List[str], **kwargs) -> List[Response]:
-        logger.info(f"prompt_format: {self.prompt_format}")
-        logger.info(f"before construct_prompts: {inputs}")
-        inputs = construct_prompts(inputs, prompt_format=self.prompt_format)
-        logger.info(f"after construct_prompts: {inputs}")
+        streams = [list() for _ in range(len(inputs))]
+        for batch_response in self.stream(inputs, **kwargs):
+            for i, response in enumerate(batch_response):
+                streams[i].append(response)
 
-        tokenized_inputs = self.tokenizer.encode(inputs)
-        kwargs = self._add_default_generate_kwargs(
-            kwargs,
-            model_inputs={"inputs": inputs,
-                          "tokenized_inputs": tokenized_inputs},
-        )
-
-        chat_completion = False
-        try:
-            inputs_bak = inputs
-            inputs = [json.loads(prompt, strict=False) for prompt in inputs]
-            chat_completion = True
-        except Exception as ex:
-            logger.error(f"Exception apply_chat_template: {ex}")
-            logger.info("Seems no chat template from user")
-            inputs = inputs_bak
-
-        logger.info(f"Forward params: {kwargs}, model_inputs {inputs}")
-        responses = []
-        for input in inputs:
-            st = time.monotonic()
-            if chat_completion:
-                kwargs.pop('stopping_criteria', None)
-                kwargs.pop('echo', None)
-                logger.info(f"Forward params: {kwargs}, model_inputs {inputs}")
-                output = self.model.create_chat_completion(
-                    messages=input,
-                    **kwargs
-                )
-                text = output["choices"][0]["message"]["content"].replace("\u200b", "").strip()
-            else:
-                output = self.model(input, **kwargs)
-                text = output["choices"][0]["text"].replace("\u200b", "").strip()
-                
-
-            logger.info(f"llm's raw response is: {output}")
-            gen_time = time.monotonic() - st
-            
-            responses.append(
-                Response(
-                    generated_text=text,
-                    num_generated_tokens=output["usage"]["completion_tokens"],
-                    num_input_tokens=output["usage"]["prompt_tokens"],
-                    num_generated_tokens_batch=output["usage"]["completion_tokens"],
-                    num_input_tokens_batch=output["usage"]["prompt_tokens"],
-                    preprocessing_time=None,
-                    postprocessing_time=None,
-                    generation_time=gen_time,
-                )
-            )
-        return responses
-
-    # def stream(
-    #     self,
-    #     inputs: List[Union[str, Prompt]],
-    #     **kwargs,
-    # ) -> Iterator[List[Response]]:
-    #     tokenized_inputs = self.tokenizer.encode(inputs[0])
-    #     kwargs = self._add_default_generate_kwargs(
-    #         kwargs,
-    #         model_inputs={"inputs": inputs,
-    #                       "tokenized_inputs": tokenized_inputs},
-    #     )
-
-    #     logger.info(f"Forward params: {kwargs}, model_inputs {inputs}")
-    #     first_token_done = False
-    #     for input in inputs:
-    #         for output in self.model(input, stream=True, **kwargs):
-    #             st = time.monotonic()
-    #             gen_time = time.monotonic() - st
-    #             text = output["choices"][0]["text"].replace("\u200b", "")
-    #             if not first_token_done:
-    #                 text = text.lstrip()
-    #                 first_token_done = True
-    #             yield [
-    #                 Response(
-    #                     generated_text=text,
-    #                     num_generated_tokens=1,
-    #                     num_input_tokens=len(tokenized_inputs),
-    #                     num_generated_tokens_batch=1,
-    #                     num_input_tokens_batch=len(tokenized_inputs),
-    #                     preprocessing_time=None,
-    #                     postprocessing_time=None,
-    #                     generation_time=gen_time,
-    #                 )
-    #             ]
+        return [Response.merge_stream(*stream) for stream in streams]
 
     def preprocess(self, prompts: List[str], **generate_kwargs):
         pass
@@ -231,6 +140,14 @@ class LlamaCppPipeline(StreamingPipeline):
         logger.info(f"stream prompt: {inputs}")
         inputs = construct_prompts(inputs, prompt_format=self.prompt_format)
         logger.info(f"stream inputs: {inputs}")
+
+        tokenized_inputs = self.tokenizer.encode(inputs)
+        kwargs = self._add_default_generate_kwargs(
+            kwargs,
+            model_inputs={"inputs": inputs,
+                          "tokenized_inputs": tokenized_inputs},
+        )
+
         chat_completion = False
         try:
             inputs_bak = inputs
@@ -250,7 +167,8 @@ class LlamaCppPipeline(StreamingPipeline):
         for idx, input in enumerate(inputs):
             tokenized_inputs = self.tokenizer.encode(input)
             if chat_completion:
-                kwargs.pop('stopping_sequences', None)
+                # kwargs.pop('stopping_sequences', None)
+                kwargs.pop('stopping_criteria', None)
                 kwargs.pop('echo', None)
                 logger.info(f"chat generate_kwargs: {kwargs}")
                 output = self.model.create_chat_completion(messages=input, stream=True, **kwargs)
@@ -258,12 +176,13 @@ class LlamaCppPipeline(StreamingPipeline):
                     st = time.monotonic()
                     gen_time = time.monotonic() - st
                     delta = chunk['choices'][0]['delta']
+                    
                     val = ''
                     if 'role' in delta:
                         val = ''
                     elif 'content' in delta:
                         val = delta['content']
-                    logger.info(f'LlamaCppPipeline -> create_chat_completion -> Yield -> "{val}"')
+                    # logger.info(f'LlamaCppPipeline -> create_chat_completion -> Yield -> "{val}"')
                     if val:
                         yield [
                             Response(
@@ -296,29 +215,29 @@ class LlamaCppPipeline(StreamingPipeline):
                     st = time.monotonic()
                     gen_time = time.monotonic() - st
                     chunk = token["choices"][0]["text"].replace("\u200b", "")
-                    logger.info(f'LlamaCppPipeline -> generate -> Yield -> "{chunk}"')
-                    if val:
-                        yield [
-                            Response(
-                                generated_text=val,
-                                num_generated_tokens=1,
-                                num_input_tokens=len(tokenized_inputs),
-                                num_generated_tokens_batch=1,
-                                num_input_tokens_batch=len(tokenized_inputs),
-                                preprocessing_time=None,
-                                postprocessing_time=None,
-                                generation_time=gen_time,
-                            )
-                            if i == idx else 
-                            Response(
-                                generated_text="",
-                                num_generated_tokens=0,
-                                num_input_tokens=len(tokenized_inputs),
-                                num_generated_tokens_batch=0,
-                                num_input_tokens_batch=len(tokenized_inputs),
-                                preprocessing_time=None,
-                                postprocessing_time=None,
-                                generation_time=gen_time,
-                            )
-                            for i in range(batch_size)   
-                        ]
+                    # logger.info(f'LlamaCppPipeline -> generate -> Yield -> "{chunk}"')
+                    # if chunk:
+                    yield [
+                        Response(
+                            generated_text=chunk,
+                            num_generated_tokens=1,
+                            num_input_tokens=len(tokenized_inputs),
+                            num_generated_tokens_batch=1,
+                            num_input_tokens_batch=len(tokenized_inputs),
+                            preprocessing_time=None,
+                            postprocessing_time=None,
+                            generation_time=gen_time,
+                        )
+                        if i == idx else 
+                        Response(
+                            generated_text="",
+                            num_generated_tokens=0,
+                            num_input_tokens=len(tokenized_inputs),
+                            num_generated_tokens_batch=0,
+                            num_input_tokens_batch=len(tokenized_inputs),
+                            preprocessing_time=None,
+                            postprocessing_time=None,
+                            generation_time=gen_time,
+                        )
+                        for i in range(batch_size)   
+                    ]

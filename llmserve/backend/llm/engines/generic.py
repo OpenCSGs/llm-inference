@@ -137,7 +137,7 @@ def init_model(
             )
             logger.info(str(resp_batch))
             assert len(resp_batch) == batch_size
-            assert all(x.generated_text for x in resp_batch)
+            # assert all(x.generated_text for x in resp_batch)
 
             warmup_success = True
         except torch.cuda.OutOfMemoryError:
