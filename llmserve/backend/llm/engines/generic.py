@@ -376,7 +376,7 @@ class GenericEngine(LLMEngine):
         )
 
         self.base_worker_group = worker_group
-        self.can_stream = await asyncio.gather(*[worker_group[0].can_stream.remote()])
+        self.can_stream = ray.get(worker_group[0].can_stream.remote())
         return worker_group
 
     async def predict(
@@ -503,5 +503,5 @@ class GenericEngine(LLMEngine):
                 f"Pipeline {self.args.model_config.initialization.pipeline} does not support streaming. Ignoring queue."
             )
             yield await self.predict(
-                prompts, timeout_s=timeout_s, start_timestamp=start_timestamp
+                prompts, timeout_s=timeout_s, start_timestamp=start_timestamp, lock=lock
             )
