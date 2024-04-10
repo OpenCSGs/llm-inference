@@ -371,6 +371,9 @@ class LLMDeployment(LLMPredictor):
         """
         prompts, request_ids = zip(*prompts_and_request_ids)
         # get tuple, need extract it
+        if not isinstance(prompts, list):
+            prompts = [prompts]
+            
         prompts_plain = [p for prompt in prompts for p in prompt]
         request_ids_plain = list(request_ids)
 
@@ -486,7 +489,7 @@ class RouterDeployment:
         return list(self._models.keys())
 
     @app.post("/{model}/run/stream") 
-    def streamer(self, model: str, prompt: Union[Prompt, List[Prompt]]) -> StreamingResponse:
+    def stream(self, model: str, prompt: Union[Prompt, List[Prompt]]) -> StreamingResponse:
         logger.info(f"url: {model}, keys: {self._models.keys()}")
             
         modelKeys = list(self._models.keys())
@@ -498,9 +501,9 @@ class RouterDeployment:
                 logger.info(f"set stream model id: {item}")
 
         logger.info(f"search stream model key: {modelID}")
-        return StreamingResponse(self.streamer_generate_text(modelID, prompt), media_type="text/plain")
+        return StreamingResponse(self.stream_generate_text(modelID, prompt), media_type="text/plain")
 
-    async def streamer_generate_text(self, modelID: str, prompt: Union[Prompt, List[Prompt]]) -> AsyncGenerator[str, None]:
+    async def stream_generate_text(self, modelID: str, prompt: Union[Prompt, List[Prompt]]) -> AsyncGenerator[str, None]:
         logger.info(f'streamer_generate_text: {modelID}, prompt: "{prompt}"')
         r: DeploymentResponseGenerator = self._models[modelID].options(stream=True).stream_generate_text.remote(prompt)
         async for i in r:
@@ -523,8 +526,8 @@ class ExperimentalDeployment(GradioIngress):
         self._model = model
         # TODO: Remove this once it is possible to reconfigure models on the fly
         self._model_configuration = model_configuration
-        hg_task = self._model_configuration.model_config.model_task
-        pipeline_info = render_gradio_params(hg_task)
+        self.hg_task = self._model_configuration.model_config.model_task
+        pipeline_info = render_gradio_params(self.hg_task)
 
         self.pipeline_info = pipeline_info
         super().__init__(self._chose_ui())
@@ -540,12 +543,27 @@ class ExperimentalDeployment(GradioIngress):
             prompts = args[0]
         logger.info(f"ExperimentalDeployment query.prompts {prompts}")
         use_prompt_format = False
-        if self._model_configuration.model_config.generation.prompt_format:
+        if self._model_configuration.model_config.generation and self._model_configuration.model_config.generation.prompt_format:
             use_prompt_format = True
         results = await asyncio.gather(*[(self._model.generate_text.remote(Prompt(prompt=prompts, use_prompt_format=use_prompt_format)))])
         logger.info(f"ExperimentalDeployment query.results {results}")
         results = results[0]
         return results.generated_text
+    
+
+    async def stream(self, *args) -> AsyncGenerator[str, None]:
+        if args[0] is None:
+            yield StopIteration
+        
+        logger.info(f"ExperimentalDeployment query.args {args}")
+        prompts = args[0]
+
+        logger.info(f"prompt is {prompts}")
+        content = ""
+        r: DeploymentResponseGenerator = self._model.options(stream=True).stream_generate_text.remote(Prompt(prompt=prompts, use_prompt_format=True))
+        async for i in r:
+            content += i.generated_text
+            yield content
 
     def _chose_ui(self) -> Callable:
         logger.info(
@@ -554,8 +572,10 @@ class ExperimentalDeployment(GradioIngress):
         gr_params = self.pipeline_info
         del gr_params["preprocess"]
         del gr_params["postprocess"]
-
-        return lambda: gr.Interface(self.query, **gr_params, title=self._model_configuration.model_config.model_id)
+        if self.hg_task == "text-generation":
+            return lambda: gr.ChatInterface(self.stream).queue()
+        else:
+            return lambda: gr.Interface(self.query, **gr_params, title=self._model_configuration.model_config.model_id)
 
 
 @serve.deployment(

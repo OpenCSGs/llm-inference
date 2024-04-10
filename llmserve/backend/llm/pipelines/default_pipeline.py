@@ -103,6 +103,7 @@ class DefaultPipeline(StreamingPipeline):
 
     def preprocess(self, prompts: List[str], **generate_kwargs):
         st = time.monotonic()
+
         prompt_text = construct_prompts(prompts, prompt_format=self.prompt_format)
         instruction_text = construct_prompts(prompts, prompt_format="")
 
