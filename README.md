@@ -8,14 +8,17 @@ We gained a great deal of inspiration and motivation from [this open source proj
 
 <img src="./docs/llm-inference.png" alt="image" width=600 height="auto">
 
-With this solution, you can:
+Llm-inference is a platform for deploying and managing LLM (Lifelong Learning Machine) inference tasks with the following features:
 
-- Rapidly deploy various LLMs on CPU/GPU.
-- Deploy LLMs on multiple nodes through Ray cluster.
-- Speed up inference by using vLLM engine to build LLM inference.
-- Utilize Restful API to manage inference of model.
-- Customize model deployment by YAML.
-- Compare model inferences.
+- Utilizes Ray technology to organize multiple nodes into a cluster, achieving centralized management of computational resources and distributing resources required for each inference task.
+- Provides a comprehensive management interface to monitor various states of LLM inference tasks, including resource utilization, the number of replicas, logs, etc.
+- Supports automatic scaling out of inference tasks, dynamically adjusting computational resources based on the volume of requests to meet user needs at different times and optimizing resource usage.
+- Implements serverless inference by automatically shutting down resources when there are no active inference tasks, preventing unnecessary resource waste.
+- Supports various inference frameworks and formats, including hg transformer (PyTorch), DeepSpeed, GGUF, VLLM, etc., with an ongoing expansion of supported frameworks.
+- Establishes user-friendly inference task publishing standards using YAML configurations for model inference loading and execution parameters, such as the framework used, batch size, serverless scaling policies, and more, to lower the barrier to entry for users.
+- Provides REST API or User Interface (UI) support, facilitating access to and management of model inference tasks.
+- Enables streaming capabilities.
+- Supports multiple methods for retrieving models, including from OpenCSG Model Hub, Huggingface Hub, or through customized S3 storage and local storage solutions.
 
 More features in [Roadmap](./Roadmap.md) are coming soon.
 
