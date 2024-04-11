@@ -6,14 +6,16 @@
 
 <img src="./docs/llm-inference.png" alt="image" width=600 height="auto">
 
-使用此解决方案，您可以: 
- 
-- 在CPU/GPU上快速部署各种LLM。 
-- 通过Ray集群在多个节点上部署LLM。 
-- 使用vLLM引擎构建LLM推理，加快推理速度。 
-- 利用Restful API管理模型推理。 
-- 使用YAML自定义模型部署。 
-- 比较模型推断。
+Llm-inference 是一个用于部署和管理LLM（Lifelong Learning Machine）推理任务的平台，它提供以下特点：
+- 利用 Ray 技术将多个节点组织成一个集群，实现统一计算资源的管理，并对每个推理任务所需的资源进行分配。
+- 提供全方位的管理界面，以监控LLM推理任务的各种状态，包括资源使用情况、副本数量、日志记录等。
+- 支持推理任务的自动扩展（Scale Out），根据请求量自动调整计算资源，以适应各个时间段的用户需求，并优化资源使用。
+- 实现无服务器（Serverless）推理，在没有推理任务执行时自动关闭相关资源，防止不必要的资源浪费。
+- 支持多种推理框架和格式，包括 hg transformer （PyTorch）、DeepSpeed、GGUF、VLLM 等，并持续扩充支持的框架列表。
+- 制定了易于理解的推理任务发布规范，通过 YAML 格式配置模型推理的加载和执行参数，例如所使用的框架、批处理大小、无服务器扩缩容策略等，以降低用户的使用门槛。
+- 提供REST API或用户界面（UI）支持，方便模型推理任务的访问和管理。
+- 支持流式处理（Streaming）功能。
+- 支持多种模型获取方式，包括从 OpenCSG Model Hub、Huggingface Hub 获取，或通过自定义S3存储和本地存储解决方案。
 
 更多[开发路线图](./Roadmap.md)中的功能正在开发中，欢迎您的贡献。
 
