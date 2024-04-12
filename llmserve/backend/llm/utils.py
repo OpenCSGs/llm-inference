@@ -39,12 +39,14 @@ def download_model(
     to the commit on Hugging Face Hub.
     """
     from transformers.utils.hub import TRANSFORMERS_CACHE
-
+    path = os.path.expanduser(os.path.join(
+        TRANSFORMERS_CACHE, f"models--{model_id.replace('/', '--')}"))
+    
     isAutoLoadConfigSuccess = False
     modelConfig = None
     try:
         modelConfig = AutoConfig.from_pretrained(
-            model_id, trust_remote_code=True)
+            path, trust_remote_code=True)
         isAutoLoadConfigSuccess = True
     except Exception:
         isAutoLoadConfigSuccess = False
@@ -73,8 +75,6 @@ def download_model(
         logger.info(
             f"Downloading '{model_id}' from '{git_uri}' to '{TRANSFORMERS_CACHE}'")
 
-    path = os.path.expanduser(os.path.join(
-        TRANSFORMERS_CACHE, f"models--{model_id.replace('/', '--')}"))
     s3_sync_args = s3_sync_args or []
     if isS3:
         model_hash_file = os.path.join(bucket_uri, "hash")
