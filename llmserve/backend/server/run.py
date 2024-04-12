@@ -68,6 +68,10 @@ def llm_server(args: Union[str, LLMApp, List[Union[LLMApp, str]]]):
         deployment_config = model.deployment_config.dict()
         model_configs[model.model_config.model_id] = model
         deployment_config = deployment_config.copy()
+
+        if user_config.get("model_config", {}).get("initialization", {}).get("initializer", {}).get("type", None) == "Vllm" and user_config.get("model_config", {}).get("initialization", {}).get("runtime_env", None):
+            deployment_config["ray_actor_options"]["runtime_env"] = user_config.get("model_config", {}).get("initialization", {}).get("runtime_env", None)
+
         max_concurrent_queries = deployment_config.pop(
             "max_concurrent_queries", None
         ) or user_config.get("model_config", {}).get("generation", {}).get("max_batch_size", 1)
