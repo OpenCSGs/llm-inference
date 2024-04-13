@@ -146,6 +146,32 @@ class VllmEngine(LLMEngine):
             model_id (str): Hugging Face model ID.
         """
         prompts = ray.get(prompts)
+        streams = [list() for _ in range(len(prompts))]
+        async for batch_response in self.stream(prompts, timeout_s=timeout_s, start_timestamp=start_timestamp, lock=lock):
+            for i, response in enumerate(batch_response):
+                streams[i].append(response)
+
+        return [Response.merge_stream(*stream) for stream in streams]
+    
+    async def check_health(self):
+        logger.info("not implements yet...")
+
+    async def stream(
+        self,
+        prompts: List[Prompt],
+        *,
+        timeout_s: float = 60,
+        start_timestamp: Optional[float] = None,
+        lock: asyncio.Lock,
+    ) -> Iterator[List[Response]]:
+        """Load model.
+
+        Args:
+            model_id (str): Hugging Face model ID.
+        """
+        if isinstance(prompts, ray.ObjectRef):
+            prompts = ray.get(prompts)
+
         prompt_format=(self.args.model_config.generation.prompt_format if self.args.model_config.generation else None)
         
         logger.info(f"Get prompt: {prompts}")
@@ -184,35 +210,37 @@ class VllmEngine(LLMEngine):
             request_id,
         )
 
-        responses = []
+        index = 0
         try:
             async for request_output in results_generator:
                 # TODO(pengli): handle more than one output
-                if request_output.finished:
-                    assert (
-                        len(request_output.outputs) == 1
-                    ), "Received more than 1 output from vllm, aborting"
-                    gen_time = time.monotonic() - st
-                    output = request_output.outputs[0]
-                    text_output = output.text
-                    num_text_returned = len(text_output)
-                    num_input_tokens = len(request_output.prompt_token_ids)
-                    finish_reason = FinishReason.from_vllm_finish_reason(
-                        output.finish_reason
-                    )
+                # if request_output.finished:
+                assert (
+                    len(request_output.outputs) == 1
+                ), "Received more than 1 output from vllm, aborting"
+                gen_time = time.monotonic() - st
+                output = request_output.outputs[0]
+                text_output = output.text
+                text_output = text_output[index:]
+                index = len(output.text)
+                num_text_returned = len(text_output)
+                num_input_tokens = len(request_output.prompt_token_ids)
+                finish_reason = FinishReason.from_vllm_finish_reason(
+                    output.finish_reason
+                )
 
-                    responses.append(
-                        Response(
-                            generated_text=text_output,
-                            num_generated_tokens=1,
-                            num_generated_tokens_batch=1,
-                            num_input_tokens=num_input_tokens,
-                            num_input_tokens_batch=num_input_tokens,
-                            preprocessing_time=None,
-                            postprocessing_time=None,
-                            generation_time=gen_time,
-                        )
+                yield [
+                    Response(
+                        generated_text=text_output,
+                        num_generated_tokens=1,
+                        num_generated_tokens_batch=1,
+                        num_input_tokens=num_input_tokens,
+                        num_input_tokens_batch=num_input_tokens,
+                        preprocessing_time=None,
+                        postprocessing_time=None,
+                        generation_time=gen_time,
                     )
+                ]
             logger.info(
                 f"Request {request_id} finished ({finish_reason}). "
                 f"Total time: {(gen_time)}s, "
@@ -221,18 +249,3 @@ class VllmEngine(LLMEngine):
             # Ensure that we cancel on the engine once we have exited the streaming
             # phase
             self.engine._abort(request_id)
-
-        return responses
-    
-    async def check_health(self):
-        logger.info("not implements yet...")
-
-    async def stream(
-        self,
-        prompts: List[Prompt],
-        *,
-        timeout_s: float = 60,
-        start_timestamp: Optional[float] = None,
-        lock: asyncio.Lock,
-    ) -> Iterator[List[Response]]:
-        pass
