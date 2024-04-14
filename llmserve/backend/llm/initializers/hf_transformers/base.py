@@ -108,7 +108,8 @@ class TransformersInitializer(LLMInitializer):
                 model_id_or_path, **from_pretrained_kwargs)
             logger.info(
                 f"TransformersInitializer: Load model {model_id_or_path} done")
-        except OSError:
+        except OSError as e:
+            logger.error(e)
             if model_id_or_path != model_id:
                 logger.warning(
                     f"Couldn't load model from derived path {model_id_or_path}, "

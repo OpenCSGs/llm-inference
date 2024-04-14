@@ -370,10 +370,8 @@ class LLMDeployment(LLMPredictor):
                 to GATEWAY_TIMEOUT_S-10. Ignored if start_timestamp is None.
         """
         prompts, request_ids = zip(*prompts_and_request_ids)
+        
         # get tuple, need extract it
-        if not isinstance(prompts, list):
-            prompts = [prompts]
-            
         prompts_plain = [p for prompt in prompts for p in prompt]
         request_ids_plain = list(request_ids)
 
@@ -504,7 +502,7 @@ class RouterDeployment:
         return StreamingResponse(self.stream_generate_text(modelID, prompt), media_type="text/plain")
 
     async def stream_generate_text(self, modelID: str, prompt: Union[Prompt, List[Prompt]]) -> AsyncGenerator[str, None]:
-        logger.info(f'streamer_generate_text: {modelID}, prompt: "{prompt}"')
+        logger.info(f'streamer_generate_text: {modelID}, prompt: {prompt}')
         r: DeploymentResponseGenerator = self._models[modelID].options(stream=True).stream_generate_text.remote(prompt)
         async for i in r:
             yield i.generated_text
