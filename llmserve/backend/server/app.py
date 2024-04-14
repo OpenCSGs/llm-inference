@@ -526,6 +526,7 @@ class ExperimentalDeployment(GradioIngress):
         self._model = model
         # TODO: Remove this once it is possible to reconfigure models on the fly
         self._model_configuration = model_configuration
+        self.batch_size = self._model_configuration.model_config.generation.max_batch_size if self._model_configuration.model_config.generation else 1
         self.hg_task = self._model_configuration.model_config.model_task
         pipeline_info = render_gradio_params(self.hg_task)
 
@@ -573,7 +574,7 @@ class ExperimentalDeployment(GradioIngress):
         del gr_params["preprocess"]
         del gr_params["postprocess"]
         if self.hg_task == "text-generation":
-            return lambda: gr.ChatInterface(self.stream).queue()
+            return lambda: gr.ChatInterface(self.stream).queue(concurrency_count=self.batch_size)
         else:
             return lambda: gr.Interface(self.query, **gr_params, title=self._model_configuration.model_config.model_id)
 
