@@ -255,11 +255,13 @@ def list_serving(appname: Optional[List[str]]) -> Dict[str, Any]:
     serve_details = ServeInstanceDetails(
         **ServeSubmissionClient(RAY_AGENT_ADDRESS).get_serve_details()
     )
+
     if not appname:
         all_apps = list(serve_details.applications.keys())
         if "apiserver" in all_apps:
             all_apps.remove("apiserver")
         appname = all_apps
+
     for app in appname:
         model_info = {}
         model_url = {}
@@ -276,10 +278,14 @@ def list_serving(appname: Optional[List[str]]) -> Dict[str, Any]:
             route_prefix = apps.get("route_prefix")
             # TBD need get real serve port, need write to ray deployment fristly?
             serve_port = "8000"
-            if "ExperimentalDeployment" in apps.get("deployments").keys():
+
+            is_serving_rest = any("-router" in s for s in list(apps.get("deployments").keys()))
+            is_serving_ui = any("Experimental" in s for s in list(apps.get("deployments").keys()))
+
+            if is_serving_ui:
                 for k, v in apps.get("deployments").items():
                     deployment_status[k] = v.get("status").value
-                    if k != "ExperimentalDeployment":
+                    if "Experimental" not in k:
                         model_id = (
                             v.get("deployment_config")
                             .get("user_config")
@@ -294,10 +300,10 @@ def list_serving(appname: Optional[List[str]]) -> Dict[str, Any]:
                             + "/"
                             + _reverse_prefix(model_id)
                         )
-            elif "RouterDeployment" in apps.get("deployments").keys():
+            elif is_serving_rest:
                 for k, v in apps.get("deployments").items():
                     deployment_status[k] = v.get("status").value
-                    if k != "RouterDeployment":
+                    if "-router" not in k:
                         model_id = (
                             v.get("deployment_config")
                             .get("user_config")
