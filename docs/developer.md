@@ -58,7 +58,7 @@ To learn more about how to customize or add new models, see the [LLMServe Model 
 
 Then run following command to deploy your model serving.
 ```
-llm-serve start serving --model=<your_model_yaml_path>
+llm-serve start serving-rest --model=<your_model_yaml_path>
 ```
 
 

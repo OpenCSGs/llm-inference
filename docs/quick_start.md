@@ -30,10 +30,10 @@ You can deploy any model in the `models` directory of this repo, or define your 
 For example:
 
 ```
-llm-serve start serving --model=models/text-generation--gpt2.yaml
+llm-serve start serving-rest --model=models/text-generation--gpt2.yaml
 
 # You can start mutiple models serving at once.
-llm-serve start serving --model=models/text-generation--facebook--opt-125m.yaml --model=models/text-generation--gpt2.yaml
+llm-serve start serving-rest --model=models/text-generation--facebook--opt-125m.yaml --model=models/text-generation--gpt2.yaml
 ```
 
 ## Check model serving status and predict URL
@@ -68,7 +68,7 @@ Invoke model with command `llm-serve predict`
 llm-serve predict --model gpt2 --prompt "I am going to do" --prompt "What do you like" 
 ```
 
-If you start the model using `llm-serve start serving`, you can also run the following command `curl` to call the model predict API shown above.
+If you start the model using `llm-serve start serving-rest`, you can also run the following command `curl` to call the model predict API shown above.
 
 ```
 curl -H "Content-Type: application/json" -X POST -d '{"prompt": "What can I do"}' "http://127.0.0.1:8000/api/v1/default/gpt2/run/predict"
@@ -81,7 +81,7 @@ curl -H "Content-Type: application/json" -X POST -d '[{"prompt":"How can you"}, 
 You can start a trial with the following command, which will start a serving and built-in UI for the model running on <http://127.0.0.1:8000/facebook--opt-125m>.
 
 ```
-llm-serve start experimental --model=models/text-generation--facebook--opt-125m.yaml
+llm-serve start serving-ui --model=models/text-generation--facebook--opt-125m.yaml
 ```
 
 You can enjoy the trial with a simple `Gradio` UI.

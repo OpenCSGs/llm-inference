@@ -117,13 +117,15 @@ start_app = typer.Typer(
 app.add_typer(start_app)
 
 
-@start_app.command()
+@start_app.command(
+    name = "serving-rest"
+)
 def serving(  # pylint: disable=function-redefined
     model: Annotated[List[str], model_type],
     appname: Annotated[Optional[str], app_name_type] = "default",
     port: Annotated[Optional[int], port_type] = DEFAULT_HTTP_PORT
 ):
-    """Start a model serving.
+    """Start a model serving with restful api.
 
     Args:
         *model: The model to run.
@@ -131,13 +133,15 @@ def serving(  # pylint: disable=function-redefined
     sdk.run(model=model, appname=appname, port=port)
 
 
-@start_app.command()
+@start_app.command(
+    name = "serving-ui"
+)
 def experimental(
     model: Annotated[List[str], model_type],
     appname: Annotated[Optional[str], app_name_type] = None,
     port: Annotated[Optional[int], port_type] = DEFAULT_HTTP_PORT
 ):
-    """Start a model serving for experimental with build-in GUI.
+    """Start a model serving with gradio UI.
 
     Args:
         *model: The model to run.
