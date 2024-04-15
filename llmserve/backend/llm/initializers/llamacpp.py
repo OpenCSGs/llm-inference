@@ -63,6 +63,10 @@ class LlamaCppInitializer(LLMInitializer):
         )
         self.model_filename = model_filename
         self.model_init_kwargs = model_init_kwargs
+        self.revision = "main"
+        if self.model_init_kwargs["revision"]:
+            self.revision = self.model_init_kwargs["revision"]
+            self.model_init_kwargs.pop("revision")
 
     def _get_model_init_kwargs(self) -> Dict[str, Any]:
         logger.info(f"model_init_kwargs: {self.model_init_kwargs}")
@@ -77,7 +81,7 @@ class LlamaCppInitializer(LLMInitializer):
 
     def load_model(self, model_id: str) -> "Llama":
         logger.info(f"LlamaCppInitializer downloading {model_id} : {self.model_filename}")
-        model_path = hf_hub_download(model_id, self.model_filename)
+        model_path = hf_hub_download(model_id, self.model_filename, revision=self.revision)
         logger.info(f"LlamaCppInitializer Loading model {model_path}")
         logger.info(f"model_init_kwargs: {self._get_model_init_kwargs()}")
         # Lazy import to avoid issues on CPU head node

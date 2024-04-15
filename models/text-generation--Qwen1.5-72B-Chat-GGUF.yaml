@@ -22,7 +22,7 @@ model_config:
     initializer:
       type: LlamaCpp
       model_filename: qwen1_5-72b-chat-q5_k_m.gguf
-      model_init_kwargs:
+      from_pretrained_kwargs:
         test: true
         n_gpu_layers: -1
     pipeline: llamacpp

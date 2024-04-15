@@ -76,3 +76,6 @@ class LLMEngine(ABC):
         lock: asyncio.Lock,
     ) -> Iterator[List[Response]]:
         pass
+
+    def reset_revision(self, revision: str):
+        self.args.model_config.initialization.initializer.reset_revision(revision)

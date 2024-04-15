@@ -20,7 +20,7 @@ model_config:
     initializer:
       type: LlamaCpp
       model_filename: llama-2-7b.Q2_K.gguf
-      model_init_kwargs:
+      from_pretrained_kwargs:
         test: true
     pipeline: llamacpp
   generation:
