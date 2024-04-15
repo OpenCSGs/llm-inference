@@ -20,6 +20,7 @@ from torch.hub import _get_torch_home
 
 from llmserve.backend.logger import get_logger
 from llmserve.backend.server.models import S3MirrorConfig, LLMConfig
+import ray
 
 logger = get_logger(__name__)
 
@@ -147,6 +148,7 @@ def download_model(
     with open(os.path.join(path, "refs", "main"), "w") as f:
         f.write(f_hash)
 
+    return f_hash
 
 def timeit(func):
     """
@@ -194,9 +196,11 @@ def initialize_node(
                 git_uri = s3_mirror_config.git_uri
                 s3_sync_args = s3_mirror_config.s3_sync_args
                 try:
-                    download_model(model_id, endpoint_url, bucket_uri,
+                    f_hash = download_model(model_id, endpoint_url, bucket_uri,
                                    git_uri, s3_sync_args=s3_sync_args)
+
                     logger.info("Done downloading the model from bucket!")
+                    return f_hash
                 except RuntimeError:
                     logger.warning(
                         f"Unable to download the model from bucket. Traceback:\n {traceback.format_exc()}"

@@ -297,6 +297,9 @@ class Transformers(Initializer, extra=Extra.forbid):
             **self.from_pretrained_kwargs,
         }
 
+    def reset_revision(self, revision: str):
+        self.from_pretrained_kwargs["revision"] = revision
+
     @property
     def allowed_pipelines(self) -> Set[str]:
         return {"default", "defaulttransformers"}
@@ -343,13 +346,17 @@ class SingleDevice(Transformers):
 class LlamaCpp(Initializer):
     type: Literal["LlamaCpp"]
     model_filename: str
-    model_init_kwargs: Dict[str, Any] = {}
+    # model_init_kwargs: Dict[str, Any] = {}
+    from_pretrained_kwargs: Dict[str, Any] = {}
 
     def get_initializer_kwargs(self) -> dict:
         return {
-            **self.dict(exclude={"type", "model_init_kwargs"}),
-            **self.model_init_kwargs,
+            **self.dict(exclude={"type", "from_pretrained_kwargs"}),
+            **self.from_pretrained_kwargs,
         }
+
+    def reset_revision(self, revision: str):
+        self.from_pretrained_kwargs["revision"] = revision
 
     @property
     def allowed_pipelines(self) -> Set[str]:
@@ -365,6 +372,9 @@ class Vllm(Initializer):
             **self.from_pretrained_kwargs,
         }
 
+    def reset_revision(self, revision: str):
+        self.from_pretrained_kwargs["revision"] = revision
+        
     @property
     def allowed_pipelines(self) -> Set[str]:
         return {"vllm"}

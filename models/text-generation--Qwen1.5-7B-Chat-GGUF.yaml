@@ -20,8 +20,8 @@ model_config:
     initializer:
       type: LlamaCpp
       model_filename: qwen1_5-7b-chat-q3_k_m.gguf
-      model_init_kwargs:
-        test: true
+      from_pretrained_kwargs:
+        revision: main
     pipeline: llamacpp
   generation:
     max_batch_size: 2

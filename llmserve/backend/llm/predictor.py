@@ -111,7 +111,7 @@ class LLMPredictor:
         await asyncio.wait_for(self.pg.ready(), timeout=pg_timeout_s)
 
         logger.info("Starting initialize_node tasks...")
-        await asyncio.gather(
+        f_hash = await asyncio.gather(
             *[
                 initialize_node_remote_pg.remote(
                     llm_config.model_id,
@@ -121,6 +121,11 @@ class LLMPredictor:
             ]
         )
 
+        logger.info(f"get version: {f_hash}")
+
+        #f_hash is a tuple, so
+        if f_hash[0]:
+            self.engine.reset_revision(f_hash[0])
         # Create the prediction workers.
         # logger.info("Creating prediction workers...")
         # worker_group = [
