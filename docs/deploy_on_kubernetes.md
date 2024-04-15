@@ -104,7 +104,7 @@ kubectl apply -f deploy/kuberay/starray.yaml
 If the model is saved on AWS storage, make sure to successfully run `aws s3 cp` to download the model files.
 
 ```
-llm-serve start experimental --model=/home/ray/models/text-generation--gpt2.yaml
+llm-serve start serving-ui --model=/home/ray/models/text-generation--gpt2.yaml
 ```
 
 ## Access model
