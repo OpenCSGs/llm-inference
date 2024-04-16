@@ -15,7 +15,6 @@ Installing `llmserve` also installs the `llm-serve` CLI, and you can get a list 
 │ --help          Show this message and exit.                                                                                                                        │
 ╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Commands ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ evaluate     Evaluate and summarize the results of a multi_query run with a strong 'evaluator' LLM like GPT-4.                                                     │
 │ list         List available model(s) and deployed serving etc.                                                                                                     │
 │ predict      Predict one or several models with one or multiple prompts, optionally read from file, and save the results to a file.                                │
 │ start        Start application(s) for LLM serving, API server, experimention, fine-tuning and comparation.                                                         │
