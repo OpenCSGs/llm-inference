@@ -131,7 +131,7 @@ class DefaultPipeline(StreamingPipeline):
 
         inputs = self.tokenizer(
             prompt_text, return_tensors="pt", add_special_tokens = generate_kwargs.get("add_special_tokens", True), padding=True
-        ).to(self.model.device if hasattr(self.model, 'device') else self.device)
+        ).to(self.model.device if hasattr(self.model, 'device') else self.model.module.device if hasattr(self.model, 'module') else self.device)
 
         if not generate_kwargs.get("return_token_type_ids", True):
             inputs.pop("token_type_ids", None)
@@ -231,7 +231,8 @@ class DefaultPipeline(StreamingPipeline):
             postprocess_params,
         ) = self._sanitize_parameters(**kwargs)
         model_inputs = self.preprocess(inputs, **preprocess_params)
-        model_inputs = self._ensure_tensor_on_device(model_inputs, device=self.device)
+        # model.module is object return by deepspeed, it set real model as model.module
+        model_inputs = self._ensure_tensor_on_device(model_inputs, device=(self.model.device if hasattr(self.model, 'device') else self.model.module.device if hasattr(self.model, 'module') else self.device))
         forward_params = self._add_default_generate_kwargs(forward_params, model_inputs)
 
         logger.info(
