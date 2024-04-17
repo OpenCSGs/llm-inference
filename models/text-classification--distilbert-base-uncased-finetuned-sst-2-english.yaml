@@ -13,7 +13,7 @@ deployment_config:
   ray_actor_options:
     num_cpus: 0.1    # for a model deployment, we have 3 actor created, 1 and 2 will cost 0.1 cpu, and the model infrence will cost 6(see the setting in the end of the file)
 model_config:
-  warmup: True
+  warmup: False
   model_task: text-classification
   model_id: distilbert-base-uncased-finetuned-sst-2-english
   max_input_words: 800
@@ -22,7 +22,6 @@ model_config:
       type: SingleDevice
       dtype: float32
       from_pretrained_kwargs:
-        use_cache: true
         trust_remote_code: true
     pipeline: defaulttransformers
 scaling_config:
