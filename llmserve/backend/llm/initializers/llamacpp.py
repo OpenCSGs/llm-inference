@@ -64,7 +64,7 @@ class LlamaCppInitializer(LLMInitializer):
         self.model_filename = model_filename
         self.model_init_kwargs = model_init_kwargs
         self.revision = "main"
-        if self.model_init_kwargs["revision"]:
+        if self.model_init_kwargs.get("revision", None):
             self.revision = self.model_init_kwargs["revision"]
             self.model_init_kwargs.pop("revision")
 
