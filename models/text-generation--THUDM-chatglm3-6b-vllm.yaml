@@ -15,10 +15,8 @@ model_config:
   warmup: True
   model_task: text-generation
   model_id: THUDM/chatglm3-6b
-  max_input_words: 800
+  max_input_words: 128
   initialization:
-    s3_mirror_config:
-      bucket_uri: /tmp/hub/chatglm3-6b/
     initializer:
       type: Vllm
       from_pretrained_kwargs:
@@ -36,8 +34,6 @@ model_config:
       repetition_penalty: 1.1
       top_p: 0.8
       top_k: 50
-    # prompt_format: "Below is an instruction that describes a task. Write a response that appropriately completes the request.\n### Instruction:\n{instruction}\n### Response:\n"
-    stopping_sequences: ["### Response:", "### End"]
 scaling_config:
   num_workers: 1
   num_gpus_per_worker: 1

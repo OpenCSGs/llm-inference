@@ -15,15 +15,13 @@ model_config:
   warmup: True
   model_task: text-generation
   model_id: bigscience/bloom-3b
-  max_input_words: 800
+  max_input_words: 512
   initialization:
-    # s3_mirror_config:
-    #   bucket_uri: s3://large-dl-models-mirror/models--amazon--LightGPT/main-safetensors/
     initializer:
       type: DeepSpeed
       dtype: float32
       max_tokens: 512
-      use_kernel: true
+      use_kernel: false
       use_meta_tensor: false
       test_hybrid_engine: false
       save_mp_checkpoint_path: false
@@ -32,7 +30,7 @@ model_config:
         trust_remote_code: true
     pipeline: default
   generation:
-    max_batch_size: 10
+    max_batch_size: 2
     batch_wait_timeout_s: 0
     generate_kwargs:
       do_sample: false
@@ -42,13 +40,9 @@ model_config:
       repetition_penalty: 1.1
       top_p: 0.8
       top_k: 50
-    # prompt_format: "Below is an instruction that describes a task. Write a response that appropriately completes the request.\n### Instruction:\n{instruction}\n### Response:\n"
-    # stopping_sequences: ["### Response:", "### End"]
+    prompt_format: "Below is an instruction that describes a task. Write a response that appropriately completes the request.\n### Instruction:\n{instruction}\n### Response:\n"
+    stopping_sequences: ["### Response:", "### End"]
 scaling_config:
   num_workers: 1
-  num_gpus_per_worker: 0
-  num_cpus_per_worker: 6   # for infrence
-  # resources_per_worker:
-  #   accelerator_type_cpu: 0.01
-  ray_actor_options:
-    num_cpus: 0.1
+  num_gpus_per_worker: 1
+  num_cpus_per_worker: 0   # for infrence

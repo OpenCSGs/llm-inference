@@ -15,27 +15,19 @@ model_config:
   warmup: False
   model_task: text-generation
   model_id: Qwen/Qwen1.5-72B-Chat
-  max_input_words: 800
+  max_input_words: 128
   initialization:
-    s3_mirror_config:
-      bucket_uri: /data/models/Qwen1.5-72B-Chat/
     initializer:
       type: DeviceMap
       dtype: float16
       from_pretrained_kwargs:
         use_cache: true
         trust_remote_code: true
-      # use_kernel: true   # for deepspped type only
-      # max_tokens: 1536   # for deepspped type only
-    # pipeline: defaulttransformers
     pipeline: default
   generation:
-    max_batch_size: 1
+    max_batch_size: 2
     batch_wait_timeout_s: 0
     generate_kwargs:
-      # bos_token_id: 151643
-      # pad_token_id: 151643,
-      # eos_token_id: [151645, 151643],
       do_sample: false
       max_new_tokens: 512
       repetition_penalty: 1.05
@@ -43,7 +35,7 @@ model_config:
       top_p: 0.8
       top_k: 20
     prompt_format: '[{{"role": "system", "content": "You are a helpful assistant."}},{{"role": "user", "content": "{instruction}"}}]'
-    # stopping_sequences: ["### Response:", "### End"]
+    stopping_sequences: ["### Response:", "### End"]
 scaling_config:
   num_workers: 1
   num_gpus_per_worker: 7

@@ -17,8 +17,6 @@ model_config:
   model_id: opencsg/opencsg-deepseek-coder-1.3b-v0.1
   max_input_words: 800
   initialization:
-    # s3_mirror_config:
-      # bucket_uri: /home/yons/models/opencsg-deepseek-coder-1.3b-v0.1/
     initializer:
       type: SingleDevice
       dtype: float16
@@ -27,16 +25,16 @@ model_config:
         trust_remote_code: true
     pipeline: default
   generation:
-    max_batch_size: 18
+    max_batch_size: 2
+    batch_wait_timeout_s: 0
     generate_kwargs:
-      do_sample: false
+      do_sample: true
       top_k: 50
       top_p: 0.95
       repetition_penalty: 1
       num_return_sequences: 1
       max_new_tokens: 1024
-    # prompt_format: "'role': 'user', 'content': {instruction}"
 scaling_config:
   num_workers: 1
   num_gpus_per_worker: 1
-  num_cpus_per_worker: 1 # for inference
+  num_cpus_per_worker: 0 # for inference

@@ -15,25 +15,22 @@ model_config:
   warmup: True
   model_task: text-generation
   model_id: Qwen/Qwen1.5-72B-Chat-GGUF
-  max_input_words: 1024
+  max_input_words: 128
   initialization:
-    # s3_mirror_config:
-      # bucket_uri: /data/models/Qwen1.5-72B-Chat-GGUF/
     initializer:
       type: LlamaCpp
       model_filename: qwen1_5-72b-chat-q5_k_m.gguf
       from_pretrained_kwargs:
-        test: true
         n_gpu_layers: -1
     pipeline: llamacpp
   generation:
-    max_batch_size: 1
+    max_batch_size: 2
     batch_wait_timeout_s: 0
     generate_kwargs:
-      max_tokens: 1024
+      max_tokens: 128
     prompt_format: '[{{"role": "system", "content": "You are a helpful assistant."}},{{"role": "user", "content": "{instruction}"}}]'
     stopping_sequences: ["<|im_end|>"]
 scaling_config:
   num_workers: 1
   num_gpus_per_worker: 6
-  num_cpus_per_worker: 8   # for inference
+  num_cpus_per_worker: 0   # for inference

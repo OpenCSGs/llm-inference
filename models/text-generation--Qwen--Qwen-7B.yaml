@@ -40,7 +40,7 @@ model_config:
       top_k: 50
       pad_token: "<|extra_0|>"
       eos_token: "<|endoftext|>"
-    # prompt_format: "Below is an instruction that describes a task. Write a response that appropriately completes the request.\n### Instruction:\n{instruction}\n### Response:\n"
+    prompt_format: "Below is an instruction that describes a task. Write a response that appropriately completes the request.\n### Instruction:\n{instruction}\n### Response:\n"
     stopping_sequences: ["### Response:", "### End"]
 scaling_config:
   num_workers: 1
