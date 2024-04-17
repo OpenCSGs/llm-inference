@@ -33,7 +33,7 @@ model_config:
       top_k: 50
       echo: false
     prompt_format: "Below is an instruction that describes a task. Write a response that appropriately completes the request.\n### Instruction:\n{instruction}\n### Response:\n"
-    #stopping_sequences: ["\n"]
+    stopping_sequences: ["\n"]
 scaling_config:
   num_workers: 1
   num_gpus_per_worker: 0

@@ -17,21 +17,16 @@ model_config:
   model_id: opencsg/opencsg-starcoder-v0.1
   max_input_words: 800
   initialization:
-    s3_mirror_config:
-      # bucket_uri: s3://large-dl-models-mirror/models--amazon--LightGPT/main-safetensors/
-      bucket_uri: /home/yons/models/opencsg-starcoder-v0.1/
     initializer:
       type: DeviceMap
       dtype: float16
       from_pretrained_kwargs:
         use_cache: true
         trust_remote_code: true
-        device_map: auto
-      # use_kernel: true   # for deepspped type only
-      # max_tokens: 1536   # for deepspped type only
     pipeline: defaulttransformers
   generation:
-    max_batch_size: 18
+    max_batch_size: 2
+    batch_wait_timeout_s: 0
     generate_kwargs:
       do_sample: false
       top_k: 10
@@ -39,11 +34,7 @@ model_config:
       top_p: 0.95
       num_return_sequences: 1
       max_length: 256
-    # prompt_format: "Below is an instruction that describes a task. Write a response that appropriately completes the request.\n### Instruction:\n{instruction}\n### Response:\n"
-    stopping_sequences: ["### Response:", "### End"]
 scaling_config:
   num_workers: 1
   num_gpus_per_worker: 2
-  num_cpus_per_worker: 1 # for inference
-  # resources_per_worker:
-    # accelerator_type_gpu: 1
+  num_cpus_per_worker: 0 # for inference
