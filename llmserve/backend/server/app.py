@@ -191,7 +191,8 @@ class LLMDeployment(LLMPredictor):
 
     @app.post("/", include_in_schema=False)
     async def generate_text(self, prompt: Prompt):
-        await self.validate_prompt(prompt)
+        if self.args.model_config.model_task == "text-generation":
+            await self.validate_prompt(prompt)
         time.time()
         with async_timeout.timeout(GATEWAY_TIMEOUT_S):
             text = await self.generate_text_batch(
@@ -205,8 +206,10 @@ class LLMDeployment(LLMPredictor):
     @app.post("/batch", include_in_schema=False)
     async def batch_generate_text(self, prompts: List[Prompt]):
         logger.info(f"batch_generate_text prompts: {prompts} ")
-        for prompt in prompts:
-            await self.validate_prompt(prompt)
+        if self.args.model_config.model_task == "text-generation":
+            for prompt in prompts:
+                await self.validate_prompt(prompt)
+                
         time.time()
         with async_timeout.timeout(GATEWAY_TIMEOUT_S):
             texts = await asyncio.gather(
@@ -547,7 +550,7 @@ class ExperimentalDeployment(GradioIngress):
         results = await asyncio.gather(*[(self._model.generate_text.remote(Prompt(prompt=prompts, use_prompt_format=use_prompt_format)))])
         logger.info(f"ExperimentalDeployment query.results {results}")
         results = results[0]
-        return results.generated_text
+        return results
     
 
     async def stream(self, *args) -> AsyncGenerator[str, None]:

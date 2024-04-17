@@ -134,8 +134,8 @@ def render_gradio_params(hg_task: str) -> Dict[str, Any]:
                 gr.components.Textbox(label="Answer"),
                 gr.components.Label(label="Score"),
             ],
-            "preprocess": lambda c, q: {"context": c, "question": q},
-            "postprocess": lambda r: (r["answer"], r["score"]),
+            "preprocess": lambda p: {"context": p[0][0], "question": p[0][1]},
+            "postprocess": lambda r: [(r["answer"], r["score"])],
         }
     elif hg_task == "summarization":
         pipeline_info = {
