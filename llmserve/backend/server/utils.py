@@ -185,7 +185,7 @@ def render_gradio_params(hg_task: str) -> Dict[str, Any]:
             "inputs": gr.components.Textbox(label="Input"),
             "outputs": gr.components.Textbox(label="Translation"),
             "preprocess": lambda x: [x],
-            "postprocess": lambda r: r[0]["translation_text"],
+            "postprocess": lambda r: [text["translation_text"] for text in r],
             "warmup": "My name is Wolfgang and I live in Berlin",
         }
     elif hg_task == "text2text-generation":
