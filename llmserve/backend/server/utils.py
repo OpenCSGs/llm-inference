@@ -141,8 +141,8 @@ def render_gradio_params(hg_task: str) -> Dict[str, Any]:
         pipeline_info = {
             "inputs": gr.components.Textbox(lines=7, label="Input"),
             "outputs": gr.components.Textbox(label="Summary"),
-            "preprocess": lambda x: {"inputs": x},
-            "postprocess": lambda r: r[0]["summary_text"],
+            "preprocess": lambda x: [r for r in x],
+            "postprocess": lambda r: [r[0]["summary_text"]],
             "warmup": """ New York (CNN)When Liana Barrientos was 23 years old, she got married in Westchester County, New York.
                         A year later, she got married again in Westchester County, but to a different man and without divorcing her first husband.
                         Only 18 days after that marriage, she got hitched yet again. Then, Barrientos declared "I do" five more times, sometimes only within two weeks of each other.
@@ -166,8 +166,8 @@ def render_gradio_params(hg_task: str) -> Dict[str, Any]:
         pipeline_info = {
             "inputs": gr.components.Textbox(label="Input"),
             "outputs": gr.components.Label(label="Classification"),
-            "preprocess": lambda x: [x],
-            "postprocess": lambda r: {i["label"].split(", ")[0]: i["score"] for i in r},
+            "preprocess": lambda x: x,
+            "postprocess": lambda r: [{i["label"].split(", ")[0]: i["score"] for i in r}],
             "warmup": "Hello, my dog is cute",
 
         }
