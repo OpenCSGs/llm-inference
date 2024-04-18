@@ -2,7 +2,7 @@
 
 ## Introduction to llm-serve
 
-`llmserve` comes with its own CLI, `llm-serve`, which allows you to interact directly with the backend without having to use the Gradio frontend.
+`llmserve` comes with its own CLI, `llm-serve`, which allows you to interact directly with the backend.
 
 Installing `llmserve` also installs the `llm-serve` CLI, and you can get a list of all available commands by running `llm-serve --help`.
 
@@ -25,14 +25,11 @@ Installing `llmserve` also installs the `llm-serve` CLI, and you can get a list 
 
 ## Start a model serving
 
-You can deploy any model in the `models` directory of this repo, or define your own model YAML file and run that instead.  
+You can deploy any model in the [models](../models) directory of this repo, or define your own model YAML file and run that instead.  
 For example:
 
 ```
-llm-serve start serving-rest --model=models/text-generation--gpt2.yaml
-
-# You can start mutiple models serving at once.
-llm-serve start serving-rest --model=models/text-generation--facebook--opt-125m.yaml --model=models/text-generation--gpt2.yaml
+llm-serve start serving-rest --model models/text-generation--facebook--opt-125m.yaml
 ```
 
 ## Check model serving status and predict URL
@@ -40,42 +37,40 @@ llm-serve start serving-rest --model=models/text-generation--facebook--opt-125m.
 Check model serving status and predict URL by:
 
 ```SHELL
-# llm-serve list serving --name gpt2
+# llm-serve list serving --appname default
 {
-  "gpt2": {
+  "default": {
     "status": {
-      "gpt2": {
+      "default": {
         "application_status": "RUNNING",
         "deployments_status": {
-          "gpt2": "HEALTHY",
-          "RouterDeployment": "HEALTHY"
+          "facebook--opt-125m": "HEALTHY",
+          "facebook--opt-125m-router": "HEALTHY"
         }
       }
     },
     "url": {
-      "prodict_url": "http://0.0.0.0:8000/api/v1/default/gpt2/run/predict"
+      "facebook/opt-125m": "http://0.0.0.0:8000/api/v1/default/facebook--opt-125m/run/predict"
     }
   }
 }
 ```
 
-## Using the model serving
+## invoke model serving
 
 Invoke model with command `llm-serve predict`
 
 ```
-llm-serve predict --model gpt2 --prompt "I am going to do" --prompt "What do you like" 
+llm-serve predict --model facebook/opt-125m --prompt "I am going to do"
 ```
 
 If you start the model using `llm-serve start serving-rest`, you can also run the following command `curl` to call the model predict API shown above.
 
 ```
-curl -H "Content-Type: application/json" -X POST -d '{"prompt": "What can I do"}' "http://127.0.0.1:8000/api/v1/default/gpt2/run/predict"
-
-curl -H "Content-Type: application/json" -X POST -d '[{"prompt":"How can you"}, {"prompt": "What can I do"}]' "http://127.0.0.1:8000/api/v1/default/gpt2/run/predict"
+curl -H "Content-Type: application/json" -X POST -d '{"prompt": "What can I do"}' "http://127.0.0.1:8000/api/v1/default/facebook--opt-125m/run/predict"
 ```
 
-## Start your trial
+## Start a model serving with Gradio UI
 
 You can start a trial with the following command, which will start a serving and built-in UI for the model running on <http://127.0.0.1:8000/facebook--opt-125m>.
 
