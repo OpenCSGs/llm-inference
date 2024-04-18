@@ -8,6 +8,8 @@ We gained a great deal of inspiration and motivation from [this open source proj
 
 <img src="./docs/llm-inference.png" alt="image" width=600 height="auto">
 
+### TL;DR
+
 Llm-inference is a platform for deploying and managing LLM (Lifelong Learning Machine) inference tasks with the following features:
 
 - Utilizes Ray technology to organize multiple nodes into a cluster, achieving centralized management of computational resources and distributing resources required for each inference task.
@@ -22,100 +24,45 @@ Llm-inference is a platform for deploying and managing LLM (Lifelong Learning Ma
 
 More features in [Roadmap](./Roadmap.md) are coming soon.
 
-## Getting started
 
-### Deploy locally
+## Deployment
 
-#### Install `LLM Inference` and dependencies
+### Install `LLM Inference` and dependencies
 
 You can start by cloning the repository and pip install `llm-serve`. It is recommended to deploy `llm-serve` with Python 3.10+.
 
 ```
 git clone https://github.com/OpenCSGs/llm-inference.git
 cd llm-inference
-pip install .
-```
-
-Option to use another pip source for faster transfer if needed.
-
-```
-pip install . -i https://pypi.tuna.tsinghua.edu.cn/simple/
 ```
 
 Install specified dependencies by components:
 
 ```
 pip install '.[backend]'
-pip install '.[frontend]'
 ```
 
-**Note:** Install vllm dependency if runtime supports GPUs, run the following command:
+**Note:** `vllm` is optional, since it requires GPU:
 
 ```
 pip install '.[vllm]'
 ```
 
-Option to use other pip sources for faster transfers if needed.
-
+Install `llm-inference`:
 ```
-pip install '.[backend]' -i https://pypi.tuna.tsinghua.edu.cn/simple/
-pip install '.[frontend]' -i https://pypi.tuna.tsinghua.edu.cn/simple/
-pip install '.[vllm]' -i https://pypi.tuna.tsinghua.edu.cn/simple/
+pip install .
 ```
 
-#### Install Ray and start a Ray Cluster locally
-
-Pip install Ray:
-
-```
-pip install -U "ray[serve-grpc]==2.9.3"
-```
-
-Option to use another pip source for faster transfer if needed.
-
-```
-pip install -U "ray[serve-grpc]==2.9.3" -i https://pypi.tuna.tsinghua.edu.cn/simple/
-```
-
-> **Note:** ChatGLM2-6b requires transformers<=4.33.3, while the latest vllm requires transformers>=4.36.0.
-
-Start cluster then:
+### Start a Ray Cluster locally
 
 ```
 ray start --head --port=6379 --dashboard-host=0.0.0.0 --dashboard-port=8265
 ```
 
-See reference [here](https://docs.ray.io/en/releases-2.9.3/ray-overview/installation.html).
+### Quick start
 
-#### Quick start
+You can follow the [quick start](./docs/quick_start.md) to run an end-to-end case.
 
-You can follow the [quick start](./docs/quick_start.md) to run an end-to-end case for model serving.
-
-#### Uninstall
-
-Uninstall `llm-serve` package:
-
-```
-pip uninstall llm-serve
-```
-
-Then shutdown the `Ray` cluster:
-
-```
-ray stop
-```
-
-### API server
-
-See the [guide](./docs/api_server.md) for API server and API documents.
-
-### Deploy on bare metal
-
-See the [guide](./docs/deploy_on_bare_metal.md) to deploy on bare metal.
-
-### Deploy on kubernetes
-
-See the [guide](./docs/deploy_on_kubernetes.md) to deploy on kubernetes.
 
 ## FAQ
 

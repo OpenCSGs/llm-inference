@@ -53,6 +53,7 @@ setup(
             "torchmetrics==1.2.1",
             "llama_cpp_python==0.2.57",
             "transformers==4.39.1",
+            "ray[serve]==2.9.3",
         ],
         "vllm": [
             "vllm>=0.2.0,<0.2.6",
