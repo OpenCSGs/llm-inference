@@ -373,7 +373,6 @@ class LLMDeployment(LLMPredictor):
                 to GATEWAY_TIMEOUT_S-10. Ignored if start_timestamp is None.
         """
         prompts, request_ids = zip(*prompts_and_request_ids)
-        
         # get tuple, need extract it
         prompts_plain = [p for prompt in prompts for p in prompt]
         request_ids_plain = list(request_ids)
@@ -422,6 +421,9 @@ class LLMDeployment(LLMPredictor):
         curr_request_id = self.curr_request_id
         self.requests_ids[curr_request_id] = True
         self.curr_request_id += 1
+        if not isinstance(prompt, list):
+            prompt = [prompt]
+
         async for s in self.stream_text_batch((prompt, curr_request_id)):
             yield s
 
