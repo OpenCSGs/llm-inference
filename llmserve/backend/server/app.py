@@ -191,16 +191,16 @@ class LLMDeployment(LLMPredictor):
 
     @app.post("/", include_in_schema=False)
     async def generate_text(self, prompt: Prompt):
+        time.time()
         if self.args.model_config.model_task == "text-generation":
             await self.validate_prompt(prompt)
-        time.time()
+        
         with async_timeout.timeout(GATEWAY_TIMEOUT_S):
             text = await self.generate_text_batch(
                 prompt,
                 # start_timestamp=start_timestamp,
             )
             logger.info(f"generated text: {text}")
-            # return text[0]
             return text
 
     @app.post("/batch", include_in_schema=False)
@@ -234,8 +234,8 @@ class LLMDeployment(LLMPredictor):
         logger.info(f"new_batch_wait_timeout_s is {new_batch_wait_timeout_s}")
 
     @serve.batch(
-        max_batch_size=18,
-        batch_wait_timeout_s=1,
+        max_batch_size=2,
+        batch_wait_timeout_s=0,
     )
     async def generate_text_batch(
         self,
@@ -352,8 +352,8 @@ class LLMDeployment(LLMPredictor):
     #     del self.requests_ids[curr_request_id]
 
     @serve.batch(
-        max_batch_size=18,
-        batch_wait_timeout_s=1,
+        max_batch_size=2,
+        batch_wait_timeout_s=0,
     )
     async def stream_text_batch(
         self,
