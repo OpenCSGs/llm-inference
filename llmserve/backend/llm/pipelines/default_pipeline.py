@@ -17,6 +17,7 @@ import asyncio
 from transformers import TextIteratorStreamer
 from threading import Thread
 from queue import Empty
+import copy
 
 logger = get_logger(__name__)
 
@@ -219,6 +220,18 @@ class DefaultPipeline(StreamingPipeline):
             response.postprocessing_time = et
         return decoded
 
+    def _sanitize_gen_parameters(
+        self,
+        generate_params: dict[str, str]
+        ):
+        generate_params = copy.deepcopy(generate_params)
+        if "max_tokens" in generate_params:
+            generate_params["max_new_tokens"] = generate_params["max_tokens"]
+            generate_params.pop("max_tokens")
+        
+        return generate_params
+
+
     @torch.inference_mode()
     def stream(
         self,
@@ -230,6 +243,7 @@ class DefaultPipeline(StreamingPipeline):
             forward_params,
             postprocess_params,
         ) = self._sanitize_parameters(**kwargs)
+        forward_params = self._sanitize_gen_parameters(forward_params)
         model_inputs = self.preprocess(inputs, **preprocess_params)
         # model.module is object return by deepspeed, it set real model as model.module
         model_inputs = self._ensure_tensor_on_device(model_inputs, device=(self.model.device if hasattr(self.model, 'device') else self.model.module.device if hasattr(self.model, 'module') else self.device))

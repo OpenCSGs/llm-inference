@@ -145,7 +145,7 @@ class LLMServeBackend(Backend):
         response = requests.post(
             url,
             headers=self.header,
-            json=[{"prompt": prompt} for prompt in prompts],
+            json={"prompt": [prompt for prompt in prompts]},
             timeout=TIMEOUT,
         )
         try:

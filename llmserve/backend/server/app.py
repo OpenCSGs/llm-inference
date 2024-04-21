@@ -29,7 +29,8 @@ from llmserve.backend.server.models import (
     GenerationConfig,
     LLMApp,
     Scaling_Config_Simple,
-    InitializationConfig
+    InitializationConfig,
+    InvokeParams,
 )
 from llmserve.backend.server.utils import parse_args, render_gradio_params
 from llmserve.common.constants import GATEWAY_TIMEOUT_S
@@ -190,21 +191,21 @@ class LLMDeployment(LLMPredictor):
         )
 
     @app.post("/", include_in_schema=False)
-    async def generate_text(self, prompt: Prompt):
-        time.time()
+    async def generate_text(self, prompt: Prompt, generate: dict[str, str] = {}):
         if self.args.model_config.model_task == "text-generation":
             await self.validate_prompt(prompt)
         
         with async_timeout.timeout(GATEWAY_TIMEOUT_S):
             text = await self.generate_text_batch(
                 prompt,
+                generate,
                 # start_timestamp=start_timestamp,
             )
             logger.info(f"generated text: {text}")
             return text
 
     @app.post("/batch", include_in_schema=False)
-    async def batch_generate_text(self, prompts: List[Prompt]):
+    async def batch_generate_text(self, prompts: List[Prompt], generate: dict[str, str] = {}):
         logger.info(f"batch_generate_text prompts: {prompts} ")
         if self.args.model_config.model_task == "text-generation":
             for prompt in prompts:
@@ -216,6 +217,7 @@ class LLMDeployment(LLMPredictor):
                 *[
                     self.generate_text_batch(
                         prompt,
+                        generate,
                         # start_timestamp=start_timestamp,
                     )
                     for prompt in prompts
@@ -240,6 +242,7 @@ class LLMDeployment(LLMPredictor):
     async def generate_text_batch(
         self,
         prompts: List[Prompt],
+        generate: dict[str, str] = {},
         *,
         start_timestamp: Optional[Union[float, List[float]]] = None,
         timeout_s: Union[float, List[float]] = GATEWAY_TIMEOUT_S - 10,
@@ -271,6 +274,7 @@ class LLMDeployment(LLMPredictor):
         )
 
         data_ref = ray.put(prompts)
+        generate_ref = ray.put(generate)
 
         while not self.base_worker_group:
             logger.info("Waiting for worker group to be initialized...")
@@ -278,7 +282,7 @@ class LLMDeployment(LLMPredictor):
 
         try:
             prediction = await self._predict_async(
-                data_ref, timeout_s=timeout_s, start_timestamp=start_timestamp
+                data_ref, generate_ref, timeout_s=timeout_s, start_timestamp=start_timestamp
             )
         except RayActorError as e:
             raise RuntimeError(
@@ -357,7 +361,7 @@ class LLMDeployment(LLMPredictor):
     )
     async def stream_text_batch(
         self,
-        prompts_and_request_ids: List[Tuple[Prompt, int]],
+        prompts_and_request_ids: List[Tuple[Prompt, int, dict]],
         *,
         start_timestamp: Optional[Union[float, List[float]]] = None,
         timeout_s: Union[float, List[float]] = GATEWAY_TIMEOUT_S - 10,
@@ -372,10 +376,11 @@ class LLMDeployment(LLMPredictor):
             timeout_s (float, optional): Timeout for the generation. Defaults
                 to GATEWAY_TIMEOUT_S-10. Ignored if start_timestamp is None.
         """
-        prompts, request_ids = zip(*prompts_and_request_ids)
+        prompts, request_ids, generate = zip(*prompts_and_request_ids)
         # get tuple, need extract it
         prompts_plain = [p for prompt in prompts for p in prompt]
         request_ids_plain = list(request_ids)
+        generate_plain = list(generate)
 
         if isinstance(start_timestamp, list) and start_timestamp[0]:
             start_timestamp = min(start_timestamp)
@@ -391,6 +396,7 @@ class LLMDeployment(LLMPredictor):
         )
 
         data_ref = ray.put(prompts_plain)
+        generate_ref = ray.put(generate_plain)
 
         while not self.base_worker_group:
             logger.info("Waiting for worker group to be initialized...")
@@ -399,6 +405,7 @@ class LLMDeployment(LLMPredictor):
         try:
             async for result in self._stream_async(
                 data_ref,
+                generate_ref,
                 timeout_s=timeout_s,
                 start_timestamp=start_timestamp,
             ):
@@ -416,7 +423,7 @@ class LLMDeployment(LLMPredictor):
         finally:
             logger.info(f"Batch for {request_ids_plain} finished")
      
-    async def stream_generate_text(self, prompt: Union[Prompt, List[Prompt]]) -> Generator[str, None, None]:
+    async def stream_generate_text(self, prompt: Union[Prompt, List[Prompt]], generate: dict[str, str] = {}) -> Generator[str, None, None]:
         logger.info(f"call LLMPredictor.stream_generate_texts")
         curr_request_id = self.curr_request_id
         self.requests_ids[curr_request_id] = True
@@ -424,7 +431,7 @@ class LLMDeployment(LLMPredictor):
         if not isinstance(prompt, list):
             prompt = [prompt]
 
-        async for s in self.stream_text_batch((prompt, curr_request_id)):
+        async for s in self.stream_text_batch((prompt, curr_request_id, generate)):
             yield s
 
     def __repr__(self) -> str:
@@ -448,7 +455,18 @@ class RouterDeployment:
         logger.info(f"init: _models.keys: {self._models.keys()}")
 
     @app.post("/{model}/run/predict")
-    async def predict(self, model: str, prompt: Union[Prompt, List[Prompt]]) -> Union[Dict[str, Any], List[Dict[str, Any]], List[Any]]:
+    async def predict(
+            self, 
+            model: str, 
+            pramas: InvokeParams
+            ) -> Union[Dict[str, Any], List[Dict[str, Any]], List[Any]]:
+        prompt = pramas.prompt
+        if not isinstance(prompt, list):
+            prompt = [prompt]
+        prompt = [p if isinstance(p, Prompt) else Prompt(prompt=p, use_prompt_format=False) for p in prompt]
+
+        generate_kwargs = pramas.dict(exclude={"prompt"}, exclude_none=True)
+        logger.info(f"get generation params: {generate_kwargs}")
         logger.info(f"url: {model}, keys: {self._models.keys()}")
         modelKeys = list(self._models.keys())
 
@@ -461,9 +479,9 @@ class RouterDeployment:
         logger.info(f"search model key {modelID}")
 
         if isinstance(prompt, Prompt):
-            results = await asyncio.gather(*[self._models[modelID].options(stream=False).generate_text.remote(prompt)])
+            results = await asyncio.gather(*[self._models[modelID].options(stream=False).generate_text.remote(prompt, generate_kwargs)])
         elif isinstance(prompt, list):
-            results = await asyncio.gather(*[self._models[modelID].options(stream=False).batch_generate_text.remote(prompt)])
+            results = await asyncio.gather(*[self._models[modelID].options(stream=False).batch_generate_text.remote(prompt, generate_kwargs)])
         else:
             raise Exception("Invaid prompt format.")
         
@@ -492,7 +510,14 @@ class RouterDeployment:
         return list(self._models.keys())
 
     @app.post("/{model}/run/stream") 
-    def stream(self, model: str, prompt: Union[Prompt, List[Prompt]]) -> StreamingResponse:
+    def stream(self, model: str, pramas: InvokeParams) -> StreamingResponse:
+        prompt = pramas.prompt
+        if not isinstance(prompt, list):
+            prompt = [prompt]
+        prompt = [p if isinstance(p, Prompt) else Prompt(prompt=p, use_prompt_format=False) for p in prompt]
+
+        generate_kwargs = pramas.dict(exclude={"prompt"}, exclude_none=True)
+        logger.info(f"get generation params: {generate_kwargs}")
         logger.info(f"url: {model}, keys: {self._models.keys()}")
             
         modelKeys = list(self._models.keys())
@@ -504,11 +529,11 @@ class RouterDeployment:
                 logger.info(f"set stream model id: {item}")
 
         logger.info(f"search stream model key: {modelID}")
-        return StreamingResponse(self.stream_generate_text(modelID, prompt), media_type="text/plain")
+        return StreamingResponse(self.stream_generate_text(modelID, prompt, generate_kwargs), media_type="text/plain")
 
-    async def stream_generate_text(self, modelID: str, prompt: Union[Prompt, List[Prompt]]) -> AsyncGenerator[str, None]:
+    async def stream_generate_text(self, modelID: str, prompt: Union[Prompt, List[Prompt]], generate: dict[str, str] = {}) -> AsyncGenerator[str, None]:
         logger.info(f'streamer_generate_text: {modelID}, prompt: {prompt}')
-        r: DeploymentResponseGenerator = self._models[modelID].options(stream=True).stream_generate_text.remote(prompt)
+        r: DeploymentResponseGenerator = self._models[modelID].options(stream=True).stream_generate_text.remote(prompt, generate)
         async for i in r:
             yield i.generated_text
 

@@ -600,3 +600,19 @@ class TrainConfig(BaseModelExtended):
         return self.dict(exclude={"per_device_eval_batch_size"})
 
 
+
+class InvokeParams(BaseModel):
+    prompt: Union[str, list[str], Prompt, List[Prompt]]
+    best_of: Optional[int] | None = None
+    echo: Optional[bool] | None = None
+    frequency_penalty: Optional[float] | None = None
+    logit_bias: Optional[Dict[str, int]] | None = None
+    logprobs: Optional[int] | None = None
+    max_tokens: Optional[int] | None = None
+    n: Optional[int] | None = None
+    presence_penalty: Optional[float] | None = None
+    seed: Optional[int] | None = None
+    stop: Union[Optional[str], List[str], None] | None = None
+    suffix: Optional[str] | None = None
+    temperature: Optional[float] | None = None
+    top_p: Optional[float] | None = None

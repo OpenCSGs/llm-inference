@@ -162,6 +162,7 @@ class LLMPredictor:
     async def _predict_async(
         self,
         prompts: List[Prompt],
+        generate: dict[str, str] = {},
         *,
         timeout_s: float = 60,
         start_timestamp: Optional[float] = None,
@@ -179,12 +180,13 @@ class LLMPredictor:
         Returns:
             A list of generated texts.
         """
-        prediction = await self.engine.predict(prompts, timeout_s=timeout_s, start_timestamp=start_timestamp, lock=self._base_worker_group_lock)
+        prediction = await self.engine.predict(prompts, generate, timeout_s=timeout_s, start_timestamp=start_timestamp, lock=self._base_worker_group_lock)
         return prediction
 
     async def _stream_async(
         self,
         prompts: List[Prompt],
+        generate: dict[str, str] = {},
         *,
         timeout_s: float = 60,
         start_timestamp: Optional[float] = None,
@@ -202,7 +204,7 @@ class LLMPredictor:
         Returns:
             A list of generated texts.
         """
-        async for s in self.engine.stream(prompts, timeout_s=timeout_s, start_timestamp=start_timestamp, lock=self._base_worker_group_lock):
+        async for s in self.engine.stream(prompts, generate, timeout_s=timeout_s, start_timestamp=start_timestamp, lock=self._base_worker_group_lock):
             yield s
     
     # Called by Serve to check the replica's health.

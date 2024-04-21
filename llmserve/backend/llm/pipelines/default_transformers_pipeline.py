@@ -1,4 +1,5 @@
 from typing import TYPE_CHECKING, List, Optional, Union
+import copy
 
 import torch
 import time
@@ -65,7 +66,7 @@ class DefaultTransformersPipeline(BasePipeline):
             forward_params,
             postprocess_params,
         ) = self._sanitize_parameters(**kwargs)
-
+        forward_params = self._sanitize_gen_parameters(forward_params)
         model_inputs = self.preprocess(inputs, **preprocess_params)
         self.pipeline.tokenizer = self.tokenizer
         if isinstance(self.pipeline, transformers.pipelines.text_generation.TextGenerationPipeline):
@@ -216,7 +217,7 @@ class DefaultTransformersPipeline(BasePipeline):
     def postprocess(self, model_outputs, **postprocess_kwargs) -> List[Response]:
         st = time.monotonic()
         generated_sequence = model_outputs["generated_sequence"]
-        
+        logger.info(generated_sequence)
         if self.postprocess_extra:
             generated_sequence = self.postprocess_extra(generated_sequence)
 
@@ -251,3 +252,13 @@ class DefaultTransformersPipeline(BasePipeline):
         return decoded
 
 
+    def _sanitize_gen_parameters(
+        self,
+        generate_params: dict[str, str]
+        ):
+        generate_params = copy.deepcopy(generate_params)
+        if "max_tokens" in generate_params:
+            generate_params["max_new_tokens"] = generate_params["max_tokens"]
+            generate_params.pop("max_tokens")
+        
+        return generate_params

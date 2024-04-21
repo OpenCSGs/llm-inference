@@ -50,6 +50,7 @@ class LLMEngine(ABC):
     async def predict(
             self,
             prompts: List[Prompt],
+            generate: dict[str, str] = {},
             *,
             timeout_s: float = 60,
             start_timestamp: Optional[float] = None,
@@ -70,6 +71,7 @@ class LLMEngine(ABC):
     async def stream(
         self,
         prompts: List[Prompt],
+        generate: dict[str, str] = {},
         *,
         timeout_s: float = 60,
         start_timestamp: Optional[float] = None,
