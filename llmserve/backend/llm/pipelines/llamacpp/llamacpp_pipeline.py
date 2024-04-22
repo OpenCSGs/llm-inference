@@ -241,3 +241,10 @@ class LlamaCppPipeline(StreamingPipeline):
                         )
                         for i in range(batch_size)   
                     ]
+
+
+    def _sanitize_gen_parameters(
+        self,
+        generate_params: dict[str, str]
+        ):
+        pass

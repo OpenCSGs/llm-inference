@@ -26,6 +26,7 @@ from llmserve.backend.llm.utils import (
     init_torch_dist_process_group_async,
     timeit,
     get_max_token_size,
+    merge_dicts,
 )
 from llmserve.backend.logger import get_logger
 from llmserve.backend.server.models import Args, LLMConfig, Prompt, Response
@@ -382,6 +383,7 @@ class GenericEngine(LLMEngine):
     async def predict(
             self,
             prompts: List[Prompt],
+            generate: dict[str, str] = {},
             *,
             timeout_s: float = 60,
             start_timestamp: Optional[float] = None,
@@ -411,6 +413,12 @@ class GenericEngine(LLMEngine):
 
         logger.info('LLM GenericEngine do async predict')
 
+        preconf_args = self.args.model_config.generation.all_generate_kwargs if self.args.model_config.generation else {}
+        onfly_args = ray.get(generate)[0]
+        generate_args = merge_dicts(
+            preconf_args,
+            onfly_args,
+        )
         async with lock:
             # prediction = (
             #     await asyncio.gather(
@@ -437,7 +445,7 @@ class GenericEngine(LLMEngine):
                             prompts,
                             timeout_s=timeout_s,
                             start_timestamp=start_timestamp,
-                            **self.args.model_config.generation.all_generate_kwargs if self.args.model_config.generation else {},  # pylint:disable=no-member
+                            **generate_args,
                         )
 
                         # for index, worker in enumerate(self.base_worker_group)
@@ -467,6 +475,7 @@ class GenericEngine(LLMEngine):
     async def stream(
         self,
         prompts: List[Prompt],
+        generate: dict[str, str] = {},
         *,
         timeout_s: float = 60,
         start_timestamp: Optional[float] = None,
@@ -485,6 +494,13 @@ class GenericEngine(LLMEngine):
         Returns:
             A list of generated texts.
         """
+        preconf_args = self.args.model_config.generation.all_generate_kwargs if self.args.model_config.generation else {}
+        onfly_args = ray.get(generate)[0]
+        generate_args = merge_dicts(
+            preconf_args,
+            onfly_args,
+        )
+
         if self.can_stream:
             async with lock:
                 tasks = [
@@ -492,7 +508,7 @@ class GenericEngine(LLMEngine):
                         prompts,
                         timeout_s=timeout_s,
                         start_timestamp=start_timestamp,
-                        **self.args.model_config.generation.all_generate_kwargs,
+                        **generate_args,
                     )
                     for worker in self.base_worker_group
                 ]
@@ -503,5 +519,5 @@ class GenericEngine(LLMEngine):
                 f"Pipeline {self.args.model_config.initialization.pipeline} does not support streaming. Ignoring queue."
             )
             yield await self.predict(
-                prompts, timeout_s=timeout_s, start_timestamp=start_timestamp, lock=lock
+                prompts, generate, timeout_s=timeout_s, start_timestamp=start_timestamp, lock=lock
             )

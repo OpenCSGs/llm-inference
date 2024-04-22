@@ -268,6 +268,13 @@ class BasePipeline(ABC):
         generate_kwargs.pop("stopping_sequences", None)
         return generate_kwargs
 
+    @abstractmethod
+    def _sanitize_gen_parameters(
+        self,
+        generate_params: dict[str, str]
+        ):
+        pass
+
     def _sanitize_parameters(
         self,
         return_full_text=None,
