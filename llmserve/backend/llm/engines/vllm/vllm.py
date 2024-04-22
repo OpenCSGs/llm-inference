@@ -148,7 +148,7 @@ class VllmEngine(LLMEngine):
         """
         prompts = ray.get(prompts)
         streams = [list() for _ in range(len(prompts))]
-        async for batch_response in self.stream(prompts, timeout_s=timeout_s, start_timestamp=start_timestamp, lock=lock):
+        async for batch_response in self.stream(prompts, generate, timeout_s=timeout_s, start_timestamp=start_timestamp, lock=lock):
             for i, response in enumerate(batch_response):
                 streams[i].append(response)
 
@@ -174,6 +174,10 @@ class VllmEngine(LLMEngine):
         if isinstance(prompts, ray.ObjectRef):
             prompts = ray.get(prompts)
 
+        if isinstance(generate, ray.ObjectRef):
+            generate = ray.get(generate)[0]
+        logger.info(f"get on fly params for generation: {generate}")
+
         prompt_format=(self.args.model_config.generation.prompt_format if self.args.model_config.generation else None)
         
         logger.info(f"Get prompt: {prompts}")
@@ -185,11 +189,13 @@ class VllmEngine(LLMEngine):
             logger.warn("vllm cannot handle more than 1 prompt with one line engine, try 'LLMEngine' if you want try static batch")
 
         kwargs = self.args.model_config.generation.all_generate_kwargs if self.args.model_config.generation else {}
-        
+        logger.info(f"predefined generate params: {kwargs}")
+
         sampling_params = VLLMSamplingParams.merge_generation_params(
-            dict(), kwargs
+            kwargs, generate
         )
 
+        logger.info(f"final generate params: {sampling_params}")
         st = time.monotonic()
         request_id = str(uuid.uuid4())
         tokenizer = self.engine.engine.tokenizer
