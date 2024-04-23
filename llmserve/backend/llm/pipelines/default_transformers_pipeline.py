@@ -151,10 +151,6 @@ class DefaultTransformersPipeline(BasePipeline):
                 logger.info("Seems no chat template from user or the model donot has a 'chat template'")
                 prompt_text = prompt_text_bak
 
-            inputs = self.tokenizer(
-                prompt_text, return_tensors="pt", add_special_tokens = generate_kwargs.get("add_special_tokens", True), padding=True
-            )
-
             if generate_kwargs.get("eos_token", False):
                 self.tokenizer.eos_token = generate_kwargs.get("eos_token")
 
@@ -163,6 +159,12 @@ class DefaultTransformersPipeline(BasePipeline):
 
             if self.tokenizer.pad_token is None:
                 self.tokenizer.pad_token = self.tokenizer.eos_token
+                
+            inputs = self.tokenizer(
+                prompt_text, return_tensors="pt", add_special_tokens = generate_kwargs.get("add_special_tokens", True), padding=True
+            )
+
+
                 
         if self.preprocess_extra:
             prompt_text = self.preprocess_extra(prompt_text)
