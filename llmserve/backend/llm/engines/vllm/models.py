@@ -3,6 +3,9 @@ import os
 from pydantic import BaseModel, validator
 from .error_handling import TooManyStoppingSequences
 from llmserve.backend.server.models import BaseModelExtended
+from llmserve.backend.llm.utils import (
+    merge_dicts,
+)
 
 ModelT = TypeVar("ModelT", bound=BaseModel)
 MAX_NUM_STOPPING_SEQUENCES = os.getenv("MAX_NUM_STOPPING_SEQUENCES", 8)
@@ -73,9 +76,19 @@ class SamplingParams(BaseModelExtended):
 
     @classmethod
     def merge_generation_params(
-        cls: Type[ModelT], prompt: Any, kwargs: dict
+        cls: Type[ModelT], pre_kwargs: dict, onfly_kwargs: dict
     ) -> ModelT:
-        return cls.parse_obj(kwargs)
+        generate_kwargs = merge_dicts(
+            pre_kwargs,
+            onfly_kwargs,
+        )
+
+        # The stoppping sequence needs to be merged manually
+        generate_kwargs["stop"] = (onfly_kwargs.get("stop") or []) + (
+            pre_kwargs.get("stopping_sequences") or []
+        )
+
+        return cls.parse_obj(generate_kwargs)
 
 
 class VLLMSamplingParams(SamplingParams):
