@@ -15,6 +15,7 @@ from vllm.config import ParallelConfig as VllmParallelConfig
 from vllm.config import SchedulerConfig as VllmSchedulerConfig
 from vllm.engine.arg_utils import AsyncEngineArgs
 from vllm.engine.async_llm_engine import AsyncLLMEngine, AsyncStream, _AsyncLLMEngine
+from llmserve.backend.llm.utils import get_model_location_on_disk
 
 from .error_handling import InputTooLong
 
@@ -65,36 +66,10 @@ class LLMEngineRay(_AsyncLLMEngine):
             )
             raise InputTooLong(num_input_tokens, max_input_length).exception
         return prompt_token_ids
-
-def _get_model_location_on_disk(model_id: str) -> str:
-    """Get the location of the model on disk.
-
-    Args:
-        model_id (str): Hugging Face model ID.
-    """
-    from transformers.utils.hub import TRANSFORMERS_CACHE
-
-    path = os.path.expanduser(
-        os.path.join(TRANSFORMERS_CACHE,
-                        f"models--{model_id.replace('/', '--')}")
-    )
-    model_id_or_path = model_id
-
-    if os.path.exists(path):
-        with open(os.path.join(path, "refs", "main"), "r") as f:
-            snapshot_hash = f.read().strip()
-        if os.path.exists(
-            os.path.join(path, "snapshots", snapshot_hash)
-        ) and os.path.exists(
-            os.path.join(path, "snapshots", snapshot_hash, "config.json")
-        ):
-            model_id_or_path = os.path.join(
-                path, "snapshots", snapshot_hash)
-    return model_id_or_path
     
 def _get_vllm_engine_config(args: Args) -> Tuple[AsyncEngineArgs, VllmConfigs]:
     # Generate engine arguements and engine configs
-    model_id_or_path = _get_model_location_on_disk(args.model_config.actual_hf_model_id)
+    model_id_or_path = get_model_location_on_disk(args.model_config.actual_hf_model_id)
 
     async_engine_args = AsyncEngineArgs(
         # This is the local path on disk, or the hf model id

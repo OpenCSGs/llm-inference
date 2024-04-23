@@ -14,6 +14,7 @@ from ._base import BasePipeline
 from .utils import construct_prompts
 from llmserve.backend.server.utils import render_gradio_params
 from .default_pipeline import DefaultPipeline
+from llmserve.backend.llm.utils import get_model_location_on_disk
 
 try:
     import transformers
@@ -94,8 +95,9 @@ class DefaultTransformersPipeline(BasePipeline):
         logger.info(
             f"DefaultTransformersPipeline.from_initializer on device {device} for {model_id}")
         model_from_pretrained_kwargs = initializer.get_model_from_pretrained_kwargs()
+        model_id_or_path = get_model_location_on_disk(model_id)
         default_kwargs = dict(
-            model=model_id,
+            model=model_id_or_path,
             **kwargs,
             **model_from_pretrained_kwargs
         )

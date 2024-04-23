@@ -9,6 +9,7 @@ from huggingface_hub import snapshot_download
 from transformers import AutoConfig, AutoModelForCausalLM, PreTrainedModel
 
 from llmserve.backend.logger import get_logger
+from llmserve.backend.llm.utils import get_model_location_on_disk
 
 from .base import TransformersInitializer
 
@@ -127,7 +128,7 @@ class DeepSpeedInitializer(TransformersInitializer):
         return os.path.abspath(repo_root), os.path.abspath(checkpoints_json)
 
     def load_model(self, model_id: str) -> "PreTrainedModel":
-        model_id_or_path = self._get_model_location_on_disk(model_id)
+        model_id_or_path = get_model_location_on_disk(model_id)
         from_pretrained_kwargs = self._get_model_from_pretrained_kwargs()
 
         logger.info(f"Loading model {model_id_or_path}...")
@@ -151,7 +152,8 @@ class DeepSpeedInitializer(TransformersInitializer):
                     raise
 
             self._repo_root, self._checkpoints_json = self._generate_checkpoint_json(
-                model_id
+                model_id, 
+                model_id_or_path
             )
 
             with deepspeed.OnDevice(dtype=torch.float16, device="meta"):
