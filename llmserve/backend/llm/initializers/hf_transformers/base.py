@@ -15,6 +15,7 @@ import transformers
 from llmserve.backend.logger import get_logger
 
 from .._base import LLMInitializer
+from llmserve.backend.llm.utils import get_model_location_on_disk
 
 logger = get_logger(__name__)
 
@@ -63,39 +64,14 @@ class TransformersInitializer(LLMInitializer):
         tokenizer = self.load_tokenizer(model_id)
         return self.postprocess_model(model), self.postprocess_tokenizer(tokenizer)
 
-    def _get_model_location_on_disk(self, model_id: str) -> str:
-        """Get the location of the model on disk.
-
-        Args:
-            model_id (str): Hugging Face model ID.
-        """
-        from transformers.utils.hub import TRANSFORMERS_CACHE
-
-        path = os.path.expanduser(
-            os.path.join(TRANSFORMERS_CACHE,
-                         f"models--{model_id.replace('/', '--')}")
-        )
-        model_id_or_path = model_id
-
-        if os.path.exists(path):
-            with open(os.path.join(path, "refs", "main"), "r") as f:
-                snapshot_hash = f.read().strip()
-            if os.path.exists(
-                os.path.join(path, "snapshots", snapshot_hash)
-            ) and os.path.exists(
-                os.path.join(path, "snapshots", snapshot_hash, "config.json")
-            ):
-                model_id_or_path = os.path.join(
-                    path, "snapshots", snapshot_hash)
-        return model_id_or_path
-
     def load_model(self, model_id: str, loader: transformers.AutoModel = AutoModelForCausalLM) -> "PreTrainedModel":
         """Load model.
 
         Args:
             model_id (str): Hugging Face model ID.
         """
-        model_id_or_path = self._get_model_location_on_disk(model_id)
+        model_id_or_path = get_model_location_on_disk(model_id)
+        logger.info(f"actually model id/path is: {model_id_or_path}")
         from_pretrained_kwargs = self._get_model_from_pretrained_kwargs()
 
         logger.info(
@@ -128,7 +104,7 @@ class TransformersInitializer(LLMInitializer):
         Args:
             tokenizer_id (str): Hugging Face tokenizer name.
         """
-        tokenizer_id_or_path = self._get_model_location_on_disk(tokenizer_id)
+        tokenizer_id_or_path = get_model_location_on_disk(tokenizer_id)
         from_pretrained_kwargs = self._get_model_from_pretrained_kwargs()
 
         logger.info(

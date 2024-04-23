@@ -310,3 +310,30 @@ async def init_torch_dist_process_group_async(
 # To get max input token size for warmup. w/ DS, there is "max_tokens" localed "initializer/max_tokens", it will conflict with "max_input_words", prefer "max_tokens" if both existed 
 def get_max_token_size(llm_config: LLMConfig):
     return llm_config.initialization.initializer.max_tokens if hasattr(llm_config.initialization.initializer, "max_tokens") else llm_config.max_input_words
+
+
+def get_model_location_on_disk(model_id: str) -> str:
+    """Get the location of the model on disk.
+
+    Args:
+        model_id (str): Hugging Face model ID.
+    """
+    from transformers.utils.hub import TRANSFORMERS_CACHE
+
+    path = os.path.expanduser(
+        os.path.join(TRANSFORMERS_CACHE,
+                        f"models--{model_id.replace('/', '--')}")
+    )
+    model_id_or_path = model_id
+
+    if os.path.exists(path):
+        with open(os.path.join(path, "refs", "main"), "r") as f:
+            snapshot_hash = f.read().strip()
+        if os.path.exists(
+            os.path.join(path, "snapshots", snapshot_hash)
+        ) and os.path.exists(
+            os.path.join(path, "snapshots", snapshot_hash, "config.json")
+        ):
+            model_id_or_path = os.path.join(
+                path, "snapshots", snapshot_hash)
+    return model_id_or_path

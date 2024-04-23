@@ -6,6 +6,7 @@ import ray
 from ray.util.placement_group import PlacementGroup
 from transformers.dynamic_module_utils import init_hf_modules
 from llmserve.backend.server.models import Args
+import os
 
 
 from vllm.config import CacheConfig as VllmCacheConfig
@@ -14,6 +15,7 @@ from vllm.config import ParallelConfig as VllmParallelConfig
 from vllm.config import SchedulerConfig as VllmSchedulerConfig
 from vllm.engine.arg_utils import AsyncEngineArgs
 from vllm.engine.async_llm_engine import AsyncLLMEngine, AsyncStream, _AsyncLLMEngine
+from llmserve.backend.llm.utils import get_model_location_on_disk
 
 from .error_handling import InputTooLong
 
@@ -64,16 +66,16 @@ class LLMEngineRay(_AsyncLLMEngine):
             )
             raise InputTooLong(num_input_tokens, max_input_length).exception
         return prompt_token_ids
-
-
+    
 def _get_vllm_engine_config(args: Args) -> Tuple[AsyncEngineArgs, VllmConfigs]:
     # Generate engine arguements and engine configs
+    model_id_or_path = get_model_location_on_disk(args.model_config.actual_hf_model_id)
 
     async_engine_args = AsyncEngineArgs(
         # This is the local path on disk, or the hf model id
         # If it is the hf_model_id, vllm automatically downloads the correct model.
         **dict(
-            model=args.model_config.actual_hf_model_id,
+            model=model_id_or_path,
             worker_use_ray=True,
             engine_use_ray=False,
             tensor_parallel_size=args.scaling_config.num_workers,
