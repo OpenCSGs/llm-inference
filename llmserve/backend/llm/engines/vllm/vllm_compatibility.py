@@ -6,6 +6,7 @@ import ray
 from ray.util.placement_group import PlacementGroup
 from transformers.dynamic_module_utils import init_hf_modules
 from llmserve.backend.server.models import Args
+import os
 
 
 from vllm.config import CacheConfig as VllmCacheConfig
@@ -65,15 +66,41 @@ class LLMEngineRay(_AsyncLLMEngine):
             raise InputTooLong(num_input_tokens, max_input_length).exception
         return prompt_token_ids
 
+def _get_model_location_on_disk(model_id: str) -> str:
+    """Get the location of the model on disk.
 
+    Args:
+        model_id (str): Hugging Face model ID.
+    """
+    from transformers.utils.hub import TRANSFORMERS_CACHE
+
+    path = os.path.expanduser(
+        os.path.join(TRANSFORMERS_CACHE,
+                        f"models--{model_id.replace('/', '--')}")
+    )
+    model_id_or_path = model_id
+
+    if os.path.exists(path):
+        with open(os.path.join(path, "refs", "main"), "r") as f:
+            snapshot_hash = f.read().strip()
+        if os.path.exists(
+            os.path.join(path, "snapshots", snapshot_hash)
+        ) and os.path.exists(
+            os.path.join(path, "snapshots", snapshot_hash, "config.json")
+        ):
+            model_id_or_path = os.path.join(
+                path, "snapshots", snapshot_hash)
+    return model_id_or_path
+    
 def _get_vllm_engine_config(args: Args) -> Tuple[AsyncEngineArgs, VllmConfigs]:
     # Generate engine arguements and engine configs
+    model_id_or_path = _get_model_location_on_disk(args.model_config.actual_hf_model_id)
 
     async_engine_args = AsyncEngineArgs(
         # This is the local path on disk, or the hf model id
         # If it is the hf_model_id, vllm automatically downloads the correct model.
         **dict(
-            model=args.model_config.actual_hf_model_id,
+            model=model_id_or_path,
             worker_use_ray=True,
             engine_use_ray=False,
             tensor_parallel_size=args.scaling_config.num_workers,
