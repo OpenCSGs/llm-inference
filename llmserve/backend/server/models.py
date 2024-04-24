@@ -481,11 +481,14 @@ class LLMConfig(BaseModelExtended):
             # from readme. This is not foolproof, but should work
             # OK for most cases.
             try:
-                readme = hf_hub_download(model_id, "README.md")
-                assert readme
-                with open(readme, "r") as f:
-                    model_description = markdown_extract_first_paragraph(
-                        f.read())
+                pass
+                # it's expensive to do that, since something cannot access to HF, that will writ until timeout and dramaticlly slow down the process of deployment
+                # so comment it, TODO turn to other repo(csghub .etc) to get such info
+                # readme = hf_hub_download(model_id, "README.md")
+                # assert readme
+                # with open(readme, "r") as f:
+                #     model_description = markdown_extract_first_paragraph(
+                #         f.read())
             except Exception:
                 model_description = ""
             values["model_description"] = model_description
