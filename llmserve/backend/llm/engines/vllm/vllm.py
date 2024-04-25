@@ -196,7 +196,6 @@ class VllmEngine(LLMEngine):
         )
 
         logger.info(f"final generate params: {sampling_params}")
-        st = time.monotonic()
         request_id = str(uuid.uuid4())
         tokenizer = self.engine.engine.tokenizer
         prompt_text = inputs[0]
@@ -212,6 +211,7 @@ class VllmEngine(LLMEngine):
 
         logger.info(f"final prompt is: {prompt_text}")
         # Construct a results generator from VLLM
+        st = time.monotonic()
         results_generator: AsyncIterator[RequestOutput] = self.engine.generate(
             prompt_text,
             self._parse_sampling_params(sampling_params),
@@ -249,6 +249,7 @@ class VllmEngine(LLMEngine):
                         generation_time=gen_time,
                     )
                 ]
+                st = time.monotonic()
             logger.info(
                 f"Request {request_id} finished ({finish_reason}). "
                 f"Total time: {(gen_time)}s, "

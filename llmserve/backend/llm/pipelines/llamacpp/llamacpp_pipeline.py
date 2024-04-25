@@ -171,9 +171,9 @@ class LlamaCppPipeline(StreamingPipeline):
                 kwargs.pop('stopping_criteria', None)
                 kwargs.pop('echo', None)
                 logger.info(f"chat generate_kwargs: {kwargs}")
+                st = time.monotonic()
                 output = self.model.create_chat_completion(messages=input, stream=True, **kwargs)
                 for chunk in output:
-                    st = time.monotonic()
                     gen_time = time.monotonic() - st
                     delta = chunk['choices'][0]['delta']
                     
@@ -208,11 +208,12 @@ class LlamaCppPipeline(StreamingPipeline):
                             )
                             for i in range(batch_size)   
                         ]
+                        st = time.monotonic()
             else:
                 logger.info(f"generate_kwargs: {kwargs}")
+                st = time.monotonic()
                 output = self.model(input, stream=True, **kwargs)
                 for token in output:
-                    st = time.monotonic()
                     gen_time = time.monotonic() - st
                     chunk = token["choices"][0]["text"].replace("\u200b", "")
                     # logger.info(f'LlamaCppPipeline -> generate -> Yield -> "{chunk}"')
@@ -241,6 +242,7 @@ class LlamaCppPipeline(StreamingPipeline):
                         )
                         for i in range(batch_size)   
                     ]
+                    st = time.monotonic()
 
 
     def _sanitize_gen_parameters(

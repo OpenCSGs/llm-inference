@@ -149,7 +149,7 @@ class DefaultPipeline(StreamingPipeline):
         }
 
     def forward(self, model_inputs, **generate_kwargs):
-        st = time.monotonic()
+        # st = time.monotonic()
         inputs = model_inputs["inputs"]
         instruction_text = model_inputs["instruction_text"]
         prompt_text = model_inputs["prompt_text"]
@@ -167,12 +167,12 @@ class DefaultPipeline(StreamingPipeline):
         generation_kwargs = dict(inputs, streamer=streamer, **generate_kwargs)
         thread = Thread(target=self.model.generate, kwargs=generation_kwargs)
         thread.start()
+        st = time.monotonic()
         while True:
             try:
                 for token in streamer:
-                    et = time.monotonic() - st
-                    st = et
                     if token:
+                        et = time.monotonic() - st
                         yield {
                             "inputs": inputs,
                             "generated_sequence": [token],
@@ -182,6 +182,7 @@ class DefaultPipeline(StreamingPipeline):
                             "generation_time": et,
                             "generate_kwargs": generate_kwargs,
                         }
+                        st = time.monotonic()
                 break
             except Empty:
                 asyncio.sleep(0.001)
@@ -202,7 +203,7 @@ class DefaultPipeline(StreamingPipeline):
                 if inputs_unwrapped[i] != self.tokenizer.pad_token_id:
                     break
             num_input_tokens = len(inputs_unwrapped[i:])
-            num_generated_tokens = len(tokens)
+            num_generated_tokens = 1
             response = Response(
                 generated_text=tokens,
                 num_generated_tokens=num_generated_tokens,
