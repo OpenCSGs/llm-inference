@@ -185,6 +185,13 @@ class Response(ComputedPropertyMixin, BaseModelExtended):
         ]
         generation_time = sum(generation_time) if generation_time else None
 
+        postprocessing_time = [
+            response.postprocessing_time
+            for response in responses
+            if response.postprocessing_time is not None
+        ]
+        postprocessing_time = sum(postprocessing_time) if postprocessing_time else None
+
         return cls(
             generated_text=generated_text,
             num_input_tokens=num_input_tokens,
@@ -193,6 +200,7 @@ class Response(ComputedPropertyMixin, BaseModelExtended):
             num_generated_tokens_batch=num_generated_tokens_batch,
             preprocessing_time=preprocessing_time,
             generation_time=generation_time,
+            postprocessing_time=postprocessing_time,
         )
     
     @property
@@ -205,7 +213,6 @@ class Response(ComputedPropertyMixin, BaseModelExtended):
             )
         except Exception:
             return None
-
     @property
     def num_total_tokens(self) -> Optional[float]:
         try:
