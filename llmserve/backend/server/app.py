@@ -31,6 +31,7 @@ from llmserve.backend.server.models import (
     Scaling_Config_Simple,
     InitializationConfig,
     InvokeParams,
+    OpenParams,
 )
 from llmserve.backend.server.utils import parse_args, render_gradio_params
 from llmserve.common.constants import GATEWAY_TIMEOUT_S
@@ -510,13 +511,13 @@ class RouterDeployment:
         return list(self._models.keys())
 
     @app.post("/{model}/run/stream") 
-    def stream(self, model: str, pramas: InvokeParams) -> StreamingResponse:
-        prompt = pramas.prompt
+    def stream(self, model: str, params: InvokeParams) -> StreamingResponse:
+        prompt = params.prompt
         if not isinstance(prompt, list):
             prompt = [prompt]
         prompt = [p if isinstance(p, Prompt) else Prompt(prompt=p, use_prompt_format=False) for p in prompt]
 
-        generate_kwargs = pramas.dict(exclude={"prompt"}, exclude_none=True)
+        generate_kwargs = params.dict(exclude={"prompt"}, exclude_none=True)
         logger.info(f"get generation params: {generate_kwargs}")
         logger.info(f"url: {model}, keys: {self._models.keys()}")
             
@@ -536,6 +537,78 @@ class RouterDeployment:
         r: DeploymentResponseGenerator = self._models[modelID].options(stream=True).stream_generate_text.remote(prompt, generate)
         async for i in r:
             yield i.generated_text
+
+    @app.post("/{model}/chat/completions")
+    async def chat_completions(self, model: str, params: OpenParams) -> Any:
+        logger.info(f"stream: {params.stream}")
+        count = len(params.messages)
+        if count < 1:
+            raise Exception("Invaid prompt format.")
+        
+        prompt = [params.messages[-1].content]
+        prompt = [p if isinstance(p, Prompt) else Prompt(prompt=p, use_prompt_format=False) for p in prompt]
+
+        generate_kwargs = params.dict(exclude={"messages", "model", "stream"}, exclude_none=True)
+        logger.info(f"get generation params: {generate_kwargs}")
+        logger.info(f"url: {model}, keys: {self._models.keys()}")
+        
+        modelKeys = list(self._models.keys())
+        modelID = model
+        for item in modelKeys:
+            logger.info(f"_reverse_prefix(item): {_reverse_prefix(item)}")
+            if _reverse_prefix(item) == model:
+                modelID = item
+                logger.info(f"set modelID: {item}")
+        logger.info(f"search model key {modelID}")
+
+        if params.stream:
+            return StreamingResponse(self.do_stream_generate_text(modelID, prompt, generate_kwargs), media_type="text/plain")
+        else:
+            return await self.do_chat_completions(modelID, model, prompt, generate_kwargs)
+
+    async def do_stream_generate_text(self, modelID: str, prompt: Union[Prompt, List[Prompt]], generate: dict[str, str] = {}) -> AsyncGenerator[str, None]:
+        logger.info(f'streamer_generate_text: {modelID}, prompt: {prompt}')
+        r: DeploymentResponseGenerator = self._models[modelID].options(stream=True).stream_generate_text.remote(prompt, generate)
+        index = 0
+        async for i in r:
+            yield self.convertToStreamResult(modelID, index, i.generated_text, None)
+            index += 1
+        yield self.convertToStreamResult(modelID, index, "", "stop")
+    
+    async def do_chat_completions(self, modelID: str, model: str, prompt: Union[Prompt, List[Prompt]], generate_kwargs: dict[str, str] = {})-> Union[Dict[str, Any], List[Dict[str, Any]], List[Any]]:
+        if isinstance(prompt, list):
+            results = await asyncio.gather(*[self._models[modelID].options(stream=False).batch_generate_text.remote(prompt, generate_kwargs)])
+        else:
+            raise Exception("Invaid prompt format.")
+        logger.info(f"{results}")
+        result = self.convertToOpenResult(model, results[0])
+        return result        
+    
+    def convertToOpenResult(self, model: str, result) -> Any:
+        result = result[0]
+        usage = result.dict(exclude={"generated_text"}, exclude_none=True)
+        returnJson = self.convertToJson("chat.completion", "message", model, usage, 0, result.generated_text, "stop")
+        return returnJson
+    
+    def convertToStreamResult(self, model: str, index: int, result: str, finishReason: Union[str, None]) -> Any:
+        returnJson = self.convertToJson("chat.completion.chunk", "delta", model, None, index, result, finishReason)
+        return json.dumps(returnJson)
+    
+    def convertToJson(self, object: str, keyName: str, model: str, usage: Union[dict, None], index: int, result: str, finishReason: Union[str, None]) -> Any:
+        returnVal = {
+            "object": object,
+            "created": time.time(),
+            "model": model,
+            "usage": usage,
+            "choices":[
+                {
+                    "index": index,
+                    keyName: {"role":"assistant", "content": result},
+                    "finish_reason": finishReason
+                 }
+            ]
+        }
+        return returnVal
 
 @serve.deployment(
     # TODO make this configurable in llmserve run

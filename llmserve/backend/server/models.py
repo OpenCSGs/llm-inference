@@ -117,6 +117,13 @@ class Prompt(BaseModelExtended):
     def __str__(self) -> str:
         return self.prompt
 
+class ChatPrompt(BaseModelExtended):
+    role: str
+    content: str
+    use_prompt_format: bool = True
+
+    def __str__(self) -> str:
+        return self.content
 
 class Response(ComputedPropertyMixin, BaseModelExtended):
     generated_text: str
@@ -609,10 +616,7 @@ class TrainConfig(BaseModelExtended):
         """
         return self.dict(exclude={"per_device_eval_batch_size"})
 
-
-
-class InvokeParams(BaseModel):
-    prompt: Union[str, list[str], Prompt, List[Prompt]]
+class GeneralParams(BaseModel):
     best_of: Optional[int] | None = None
     echo: Optional[bool] | None = None
     frequency_penalty: Optional[float] | None = None
@@ -626,3 +630,12 @@ class InvokeParams(BaseModel):
     suffix: Optional[str] | None = None
     temperature: Optional[float] | None = None
     top_p: Optional[float] | None = None
+
+class InvokeParams(GeneralParams):
+    prompt: Union[str, list[str], Prompt, List[Prompt]]
+
+class OpenParams(GeneralParams):
+    messages: List[ChatPrompt]
+    model: Optional[str] | None = None
+    stream: Optional[bool] | None = False
+    
