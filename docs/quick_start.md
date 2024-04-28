@@ -70,6 +70,24 @@ If you start the model using `llm-serve start serving-rest`, you can also run th
 curl -H "Content-Type: application/json" -X POST -d '{"prompt": "What can I do"}' "http://127.0.0.1:8000/api/v1/default/facebook--opt-125m/run/predict"
 ```
 
+Run the following command `curl` to call the model predict API will return data in OpenAI style.
+
+```
+curl -H "Content-Type: application/json" -X POST -d '{"stream": false, "messages": [{"role": "user", "content": "Say this is a test!"}]}' "http://127.0.0.1:8000/api/v1/default/facebook--opt-125m/chat/completions"
+```
+
+Run the following python code to call model predict API with stream output.
+
+```
+jsonData = {"stream": True, "messages": [{"role": "user", "content": "Say this is a test!"}]}
+url = "http://127.0.0.1:8000/api/v1/default/facebook--opt-125m/chat/completions"
+
+response = requests.post(url=url, json=jsonData, stream=True)
+response.raise_for_status()
+for chunk in response.iter_content(chunk_size=None, decode_unicode=True):
+    print(chunk, end="")
+```
+
 ## Start a model serving with Gradio UI
 
 You can start a trial with the following command, which will start a serving and built-in UI for the model running on <http://127.0.0.1:8000/facebook--opt-125m>.
