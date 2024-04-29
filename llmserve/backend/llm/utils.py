@@ -291,7 +291,7 @@ async def init_torch_dist_process_group_async(
                 backend=backend,
                 rank=rank,
                 world_size=world_size,
-                local_rank=local_rank,
+                local_rank=0, # since for tensor parallelism, the GPU number per worker is always 1
                 local_world_size=local_world_size,
                 master_addr=master_addr,
                 master_port=master_port,
