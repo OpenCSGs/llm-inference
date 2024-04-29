@@ -357,6 +357,8 @@ class GenericEngine(LLMEngine):
 
         logger.info("Initializing torch_dist process group on workers...")
         # Initialize torch distributed process group for the workers.
+        # indeed, the torch dist process group is only required by deepspeed inference...
+        # TODO, consider make it deepspeed specific
         local_ranks = await init_torch_dist_process_group_async(
             worker_group,
             backend="nccl" if scaling_config.use_gpu else "gloo",
