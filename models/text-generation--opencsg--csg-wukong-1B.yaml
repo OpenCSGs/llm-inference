@@ -17,8 +17,6 @@ model_config:
   model_id: opencsg/csg-wukong-1B
   max_input_words: 800
   initialization:
-    s3_mirror_config:
-      bucket_uri: /home/yons/models/csg-wukong-1B/
     initializer:
       type: SingleDevice
       dtype: float32
