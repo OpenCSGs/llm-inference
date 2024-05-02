@@ -56,7 +56,8 @@ setup(
             "ray[serve]==2.9.3",
         ],
         "vllm": [
-            "vllm>=0.2.0,<0.2.6",
+            "vllm==0.2.6",
+            "xformers==0.0.23.post1",
         ],
         "frontend": [
             "gradio",
