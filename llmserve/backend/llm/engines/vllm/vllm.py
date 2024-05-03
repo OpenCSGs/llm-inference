@@ -51,7 +51,7 @@ class VllmEngine(LLMEngine):
         config: Args = self.args  # pylint:disable=no-member
         llm_config = config.model_config
         runtime_env = llm_config.initialization.runtime_env or {}
-
+        logger.info(f"begin calling vllm engine with args: {self.args}")
         # return AsyncLLMEngine.from_engine_args(engine_args)
         self.engine = self._engine_cls.from_llm_app(
                 self.args,
@@ -85,8 +85,7 @@ class VllmEngine(LLMEngine):
                 logger.warning(
                     f"Warmup failed due to CUDA OOM")
 
-        logger.info(
-            f"Model {llm_config.model_id} succesfully initialized!")
+        logger.info(f"Model {llm_config.model_id} succesfully initialized!")
 
         gc.collect()
         self.running = True
