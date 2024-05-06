@@ -5,7 +5,7 @@ RUN sudo apt-get update && sudo apt-get install -y vim && sudo apt-get clean
 
 COPY "./dist" "/home/ray/dist"
 
-RUN cd /home/ray/dist && pip install "$(ls *.whl | head -n1)[backend, frontend]"
+RUN cd /home/ray/dist && pip install "$(ls *.whl | head -n1)[backend, frontend, vllm]"
 
 # uncomment for enabled vllm
 # RUN cd /home/ray/dist && pip install "$(ls *.whl | head -n1)[vllm]"
