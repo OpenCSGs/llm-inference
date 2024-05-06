@@ -37,6 +37,7 @@ VllmConfigs = Tuple[
 class LLMEngineRay(_AsyncLLMEngine):
     def __init__(self, *args, runtime_env: dict, **kwargs):
         self.runtime_env = runtime_env
+        logger.info(f"args: {args}, kwargs: {kwargs}")
         super().__init__(*args, **kwargs)
 
     def _init_workers_ray(self, placement_group: "PlacementGroup", **ray_remote_kwargs):
@@ -70,7 +71,7 @@ class LLMEngineRay(_AsyncLLMEngine):
 def _get_vllm_engine_config(args: Args) -> Tuple[AsyncEngineArgs, VllmConfigs]:
     # Generate engine arguements and engine configs
     model_id_or_path = get_model_location_on_disk(args.model_config.actual_hf_model_id)
-
+    logger.info(f"initializer_kwargs: {args.model_config.initialization.initializer.get_initializer_kwargs()}")
     async_engine_args = AsyncEngineArgs(
         # This is the local path on disk, or the hf model id
         # If it is the hf_model_id, vllm automatically downloads the correct model.
@@ -134,6 +135,9 @@ class AsyncLLMEngineRay(AsyncLLMEngine):
             .options(**scaling_options)
             .remote(args)
         )
+        logger.info(f"vllm create {cls}")
+        logger.info(f"vllm engine.args: {engine_args}")
+        logger.info(f"vllm engine_configs: {engine_configs}")
         # Create the async LLM engine.
         engine = cls(
             engine_args.worker_use_ray,
