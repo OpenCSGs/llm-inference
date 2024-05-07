@@ -18,8 +18,6 @@ model_config:
   model_id: facebook/opt-125m
   max_input_words: 128
   initialization:
-    s3_mirror_config:
-      bucket_uri: /Users/hhwang/models/opt-125m/ # Local path of model with hash file
     initializer:
       type: SingleDevice
       dtype: float32
