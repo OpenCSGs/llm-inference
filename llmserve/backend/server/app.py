@@ -86,7 +86,7 @@ class ModelIdentifier(BaseModel):
         "initial_replicas": 2,
         "max_replicas": 8,
     },
-    max_concurrent_queries=2,  # Maximum backlog for a single replica
+    max_ongoing_requests=2,  # Maximum backlog for a single replica
     health_check_period_s=10,
     health_check_timeout_s=30,
 )
@@ -445,7 +445,7 @@ class LLMDeployment(LLMPredictor):
         "initial_replicas": 1,
         "max_replicas": 2,
     },
-    max_concurrent_queries=50,  # Maximum backlog for a single replica
+    max_ongoing_requests=50,  # Maximum backlog for a single replica
 )
 @serve.ingress(app)
 class RouterDeployment:
@@ -459,14 +459,14 @@ class RouterDeployment:
     async def predict(
             self, 
             model: str, 
-            pramas: InvokeParams
+            params: InvokeParams
             ) -> Union[Dict[str, Any], List[Dict[str, Any]], List[Any]]:
-        prompt = pramas.prompt
+        prompt = params.prompt
         if not isinstance(prompt, list):
             prompt = [prompt]
         prompt = [p if isinstance(p, Prompt) else Prompt(prompt=p, use_prompt_format=False) for p in prompt]
 
-        generate_kwargs = pramas.dict(exclude={"prompt"}, exclude_none=True)
+        generate_kwargs = params.dict(exclude={"prompt"}, exclude_none=True)
         logger.info(f"get generation params: {generate_kwargs}")
         logger.info(f"url: {model}, keys: {self._models.keys()}")
         modelKeys = list(self._models.keys())
@@ -617,7 +617,7 @@ class RouterDeployment:
         "initial_replicas": 1,
         "max_replicas": 2,
     },
-    max_concurrent_queries=50,  # Maximum backlog for a single replica
+    max_ongoing_requests=50,  # Maximum backlog for a single replica
 )
 class ExperimentalDeployment(GradioIngress):
     def __init__(
@@ -679,7 +679,6 @@ class ExperimentalDeployment(GradioIngress):
         else:
             return lambda: gr.Interface(self.query, **gr_params, title=self._model_configuration.model_config.model_id)
 
-
 @serve.deployment(
     # TODO make this configurable in llmserve run
     autoscaling_config={
@@ -687,7 +686,7 @@ class ExperimentalDeployment(GradioIngress):
         "initial_replicas": 1,
         "max_replicas": 2,
     },
-    max_concurrent_queries=50,  # Maximum backlog for a single replica
+    max_ongoing_requests=50,  # Maximum backlog for a single replica
 )
 @serve.ingress(app)
 class ApiServer:
@@ -761,12 +760,12 @@ class ApiServer:
             user_config = model.dict()
             deployment_config = model.deployment_config.dict()
             deployment_config = deployment_config.copy()
-            max_concurrent_queries = deployment_config.pop(
-                "max_concurrent_queries", None
+            max_ongoing_requests = deployment_config.pop(
+                "max_ongoing_requests", None
             ) or (user_config["model_config"]["generation"].get("max_batch_size", 1) if user_config["model_config"]["generation"] else 1)
             deployment = LLMDeployment.options(  # pylint:disable=no-member
                 name=name,
-                max_concurrent_queries=max_concurrent_queries,
+                max_ongoing_requests=max_ongoing_requests,
                 user_config=user_config,
                 **deployment_config,
             ).bind()
@@ -800,13 +799,13 @@ class ApiServer:
         else:
             deployment_config = model.deployment_config
         deployment_config = deployment_config.copy()
-        max_concurrent_queries = deployment_config.pop(
-            "max_concurrent_queries", None
+        max_ongoing_requests = deployment_config.pop(
+            "max_ongoing_requests", None
         ) or (user_config["model_config"]["generation"].get("max_batch_size", 1) if user_config["model_config"]["generation"] else 1)
 
         deployment = LLMDeployment.options(  # pylint:disable=no-member
             name=_reverse_prefix(args.model_id),
-            max_concurrent_queries=max_concurrent_queries,
+            max_ongoing_requests=max_ongoing_requests,
             user_config=user_config,
             **deployment_config,
         ).bind()
@@ -843,23 +842,6 @@ class ApiServer:
                           route_prefix="/" + serve_name, _blocking=False)
         return {"start_experimental": serve_name, "models": self.model_configs}
 
-    # @app.get("/serving_status")
-    # async def serving_status(self, models: List[str] = Body(..., description="models name", embed=True)) -> Dict[str, Any]:
-    #    serve_details = ServeInstanceDetails(
-    #        **ServeSubmissionClient(CONFIG.RAY_AGENT_ADDRESS).get_serve_details())
-    #    serving_status = {}
-    #    for model in models:
-    #        model_id = _reverse_prefix(model)
-    #        app_status = ""
-    #        deployment_status = {}
-    #        if model_id in serve_details.applications.keys():
-    #            apps = serve_details.applications[model_id].dict()
-    #            app_status = apps.get("status").value
-    #            for k, v in apps.get("deployments").items():
-    #                    deployment_status[k] = v.get("status").value
-    #            serving_status[model_id] = {"application_status": app_status, "deployments_status": deployment_status}
-    #    return serving_status
-
     @app.post("/start_serving")
     async def start_serving(self, user_name: Annotated[str, Header()],
                             models: Union[List[ModelConfig],
@@ -891,8 +873,8 @@ class ApiServer:
             model_hash = hashlib.md5(
                 model_identifier.encode()).hexdigest()[:12]
             serving_name = user_name.strip() + "-" + model_hash
-            serve.run(app, host=CONFIG.SERVE_RUN_HOST, name=serving_name,
-                      route_prefix="/" + serving_name, _blocking=False)
+            # serve.run(app, host=CONFIG.SERVE_RUN_HOST, name=serving_name, route_prefix="/" + serving_name, _blocking=False)
+            serve.run(target=app, name=serving_name, route_prefix="/" + serving_name, blocking=False)
             started_serving[serving_name] = value
         return started_serving
 
@@ -1007,20 +989,6 @@ class ApiServer:
             "image-to-text": image2text,
         }
 
-    # @app.get("/metadata")
-    # async def metadata(self, models: List[str] = Body(..., description="models name", embed=True)) -> Dict[str, Any]:
-    #    metadata = {}
-    #    for model in models:
-    #        #model = _replace_prefix(model)
-    #        metadata = self.model_configs[model].dict(
-    #            exclude={
-    #                "model_config": {"initialization": {"s3_mirror_config", "runtime_env"}}
-    #            }
-    #        )
-    #        logger.info(metadata)
-    #        metadata[model] = metadata
-    #    return metadata
-
     @app.get("/models")
     async def get_model(self, models: List[str] = Body(..., description="models name", embed=True)) -> Dict[str, Any]:
         model_config = {}
@@ -1045,13 +1013,13 @@ class ApiServer:
                 user_config = md.dict()
                 deployment_config = md.deployment_config.dict()  # pylint:disable=no-member
                 deployment_config = deployment_config.copy()
-                max_concurrent_queries = deployment_config.pop(
-                    "max_concurrent_queries", None
+                max_ongoing_requests = deployment_config.pop(
+                    "max_ongoing_requests", None
                 ) or (user_config["model_config"]["generation"].get("max_batch_size", 1) if user_config["model_config"]["generation"] else 1)
 
                 deployment = LLMDeployment.options(  # pylint:disable=no-member
                     name=serve_conf["name"],
-                    max_concurrent_queries=max_concurrent_queries,
+                    max_ongoing_requests=max_ongoing_requests,
                     user_config=user_config,
                     **deployment_config,
                 ).bind()
@@ -1074,16 +1042,18 @@ class ApiServer:
         self.compare_model_configs = {}
 
         for model in models:
-            logger.info(model)
+            logger.info(f"load model: {model}")
             parsed_models = []
             template = []
             if isinstance(model, str):
+                logger.info(f"parse model string: {model}")
                 parsed_models = parse_args(model)
             else:
                 if model.is_oob:
-                    logger.info(f"parse mode_id: {model.model_id}")
+                    logger.info(f"parse oob model_id: {model.model_id}")
                     parsed_models = parse_args(model.model_id)
                 else:
+                    logger.info(f"parse non-oob model_id: {model.model_id}")
                     template = CONFIG.COMPARATION_LLMTEMPLATE
                     parsed_model = copy.deepcopy(template)
                     if model.scaling_config:
@@ -1091,6 +1061,7 @@ class ApiServer:
                             setattr(parsed_model.scaling_config, key, value)
                     parsed_model.model_config.model_id = model.model_id
                     parsed_models.append(parsed_model)
+            
             for md in parsed_models:
                 user_config = md.dict()
                 if model.is_oob:
@@ -1098,13 +1069,13 @@ class ApiServer:
                 else:
                     deployment_config = md.deployment_config
                 deployment_config = deployment_config.copy()
-                max_concurrent_queries = deployment_config.pop(
-                    "max_concurrent_queries", None
+                max_ongoing_requests = deployment_config.pop(
+                    "max_ongoing_requests", None
                 ) or (user_config["model_config"]["generation"].get("max_batch_size", 1) if user_config["model_config"]["generation"] else 1)
                 name = _reverse_prefix(md.model_config.model_id)
                 deployment = LLMDeployment.options(  # pylint:disable=no-member
                     name=name,
-                    max_concurrent_queries=max_concurrent_queries,
+                    max_ongoing_requests=max_ongoing_requests,
                     user_config=user_config,
                     **deployment_config,
                 ).bind()
@@ -1218,3 +1189,34 @@ class ApiServer:
                 serve.delete("cmp_models_" + name, _blocking=False)
                 serve.delete("cmp_" + name, _blocking=False)
         return {"comparation": "Delete" + name + "Successful"}
+
+    # @app.get("/serving_status")
+    # async def serving_status(self, models: List[str] = Body(..., description="models name", embed=True)) -> Dict[str, Any]:
+    #    serve_details = ServeInstanceDetails(
+    #        **ServeSubmissionClient(CONFIG.RAY_AGENT_ADDRESS).get_serve_details())
+    #    serving_status = {}
+    #    for model in models:
+    #        model_id = _reverse_prefix(model)
+    #        app_status = ""
+    #        deployment_status = {}
+    #        if model_id in serve_details.applications.keys():
+    #            apps = serve_details.applications[model_id].dict()
+    #            app_status = apps.get("status").value
+    #            for k, v in apps.get("deployments").items():
+    #                    deployment_status[k] = v.get("status").value
+    #            serving_status[model_id] = {"application_status": app_status, "deployments_status": deployment_status}
+    #    return serving_status
+    
+    # @app.get("/metadata")
+    # async def metadata(self, models: List[str] = Body(..., description="models name", embed=True)) -> Dict[str, Any]:
+    #    metadata = {}
+    #    for model in models:
+    #        #model = _replace_prefix(model)
+    #        metadata = self.model_configs[model].dict(
+    #            exclude={
+    #                "model_config": {"initialization": {"s3_mirror_config", "runtime_env"}}
+    #            }
+    #        )
+    #        logger.info(metadata)
+    #        metadata[model] = metadata
+    #    return metadata

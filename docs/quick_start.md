@@ -68,6 +68,8 @@ If you start the model using `llm-serve start serving-rest`, you can also run th
 
 ```
 curl -H "Content-Type: application/json" -X POST -d '{"prompt": "What can I do"}' "http://127.0.0.1:8000/api/v1/default/facebook--opt-125m/run/predict"
+
+curl -H "Content-Type: application/json" -X POST -d '{"prompt": ["What can I do", "How are you"]}' "http://127.0.0.1:8000/default-d2b9814399fd/facebook--opt-125m/run/predict"
 ```
 
 Run the following command `curl` to call the model predict API will return data in OpenAI style.

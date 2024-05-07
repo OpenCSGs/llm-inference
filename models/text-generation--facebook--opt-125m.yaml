@@ -1,10 +1,10 @@
 deployment_config:
-  max_concurrent_queries: 100
+  max_ongoing_requests: 100
   autoscaling_config:
     min_replicas: 1
     initial_replicas: 1
     max_replicas: 3
-    target_num_ongoing_requests_per_replica: 10
+    target_ongoing_requests: 10
     metrics_interval_s: 10.0
     look_back_period_s: 30.0
     smoothing_factor: 1.0
@@ -18,6 +18,8 @@ model_config:
   model_id: facebook/opt-125m
   max_input_words: 128
   initialization:
+    s3_mirror_config:
+      bucket_uri: /Users/hhwang/models/opt-125m/ # Local path of model with hash file
     initializer:
       type: SingleDevice
       dtype: float32

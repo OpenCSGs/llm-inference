@@ -6,6 +6,7 @@ from ray import serve
 
 from llmserve.backend.server.app import LLMDeployment, RouterDeployment, ExperimentalDeployment, ApiServer
 # from llmserve.backend.server.app import ApplicationDeployment
+from llmserve.backend.server.config import SERVE_RUN_HOST
 from llmserve.backend.server.models import LLMApp, ServeArgs
 from llmserve.backend.server.utils import parse_args, get_serve_port
 import uuid
@@ -16,9 +17,6 @@ from llmserve.common.utils import _replace_prefix, _reverse_prefix
 
 # ray.init(address="auto")
 logger = get_logger(__name__)
-
-SERVE_RUN_HOST = "0.0.0.0"
-
 
 def get_serve_start_port(port: int):
     serve_start_port = port
@@ -72,20 +70,20 @@ def llm_server(args: Union[str, LLMApp, List[Union[LLMApp, str]]]):
         if user_config.get("model_config", {}).get("initialization", {}).get("initializer", {}).get("type", None) == "Vllm" and user_config.get("model_config", {}).get("initialization", {}).get("runtime_env", None):
             deployment_config["ray_actor_options"]["runtime_env"] = user_config.get("model_config", {}).get("initialization", {}).get("runtime_env", None)
 
-        max_concurrent_queries = deployment_config.pop(
-            "max_concurrent_queries", None
+        max_ongoing_requests = deployment_config.pop(
+            "max_ongoing_requests", None
         ) or user_config.get("model_config", {}).get("generation", {}).get("max_batch_size", 1)
 
         deployments[model.model_config.model_id] = LLMDeployment.options(  # pylint:disable=no-member
             name=_reverse_prefix(model.model_config.model_id),
-            max_concurrent_queries=max_concurrent_queries,
+            max_ongoing_requests=max_ongoing_requests,
             user_config=user_config,
             **deployment_config,
         ).bind()
 
     return RouterDeployment.options(
         name=('+'.join([_reverse_prefix(model.model_config.model_id) for model in models])) + "-router",
-        max_concurrent_queries=max_concurrent_queries,
+        max_ongoing_requests=max_ongoing_requests,
         **deployment_config,
     ).bind(deployments, model_configs)  # pylint:disable=no-member
 
@@ -124,13 +122,13 @@ def llm_experimental(args: Union[str, LLMApp, List[Union[LLMApp, str]]]):
     user_config = model.dict()
     deployment_config = model.deployment_config.dict()
     deployment_config = deployment_config.copy()
-    max_concurrent_queries = deployment_config.pop(
-        "max_concurrent_queries", None
+    max_ongoing_requests = deployment_config.pop(
+        "max_ongoing_requests", None
     ) or (user_config["model_config"]["generation"].get("max_batch_size", 1) if user_config["model_config"]["generation"] else 1)
 
     deployment = LLMDeployment.options(  # pylint:disable=no-member
         name=_reverse_prefix(model.model_config.model_id),
-        max_concurrent_queries=max_concurrent_queries,
+        max_ongoing_requests=max_ongoing_requests,
         user_config=user_config,
         **deployment_config,
     ).bind()
@@ -207,10 +205,8 @@ def start_apiserver(port: int = DEFAULT_HTTP_PORT):
     ray._private.usage.usage_lib.record_library_usage("llmserve")
     # ray.init(address="auto")
     serve_start_port = get_serve_start_port(port)
-    serve.start(http_options={"host": SERVE_RUN_HOST,
-                "port": serve_start_port})
-    logger.info(
-        f"Serve 'apiserver' is running at {SERVE_RUN_HOST}/{serve_start_port}")
+    serve.start(http_options={"host": SERVE_RUN_HOST, "port": serve_start_port})
+    logger.info(f"Serve 'apiserver' is running at {SERVE_RUN_HOST}/{serve_start_port}")
     serve.run(app, name="apiserver", route_prefix="/api")
 
 

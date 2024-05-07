@@ -552,13 +552,21 @@ class Args(BaseModelExtended):
 
 class DeploymentConfig(BaseModelExtended):
     autoscaling_config: Optional[AutoscalingConfig]
-    max_concurrent_queries: Optional[int] = None
+    max_ongoing_requests: Optional[int] = None
     ray_actor_options: Optional[Dict[str, Any]] = None
 
 
 class LLMApp(Args):
     """The full configuration of a single LLM Model"""
-
+    @classmethod
+    def parse_yaml(cls, file, **kwargs) -> "LLMApp":
+        kwargs.setdefault("Loader", yaml.SafeLoader)
+        dict_args = yaml.load(file, **kwargs)
+        try:
+            return cls.parse_obj(dict_args)
+        except:
+            raise ValueError(f"Invalid values or format in {file.name}")
+        
     deployment_config: Optional[DeploymentConfig] = None
     enabled: bool = True
 
