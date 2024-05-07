@@ -857,25 +857,23 @@ class ApiServer:
             model_config = {}
             deployment[key] = self.compare_deployments[key]
             model_config[key] = value
-            app = RouterDeployment.bind(  # pylint:disable=no-member
-                deployment, model_config)
+            app = RouterDeployment.bind(deployment, model_config)
             ray._private.usage.usage_lib.record_library_usage("llmserve")
             # deployment_config = model_config[key].deployment_config.dict()
             user_config = value.dict()
-            model_id = _replace_prefix(
-                user_config["model_config"].get("model_id"))
+            model_id = _replace_prefix(user_config["model_config"].get("model_id"))
             # TBD: To add revision to model_config, that's needed to be implemented for CLI (in YAML) and API together.
             # ... For now, that's "main" before implement this.
-            model_revision = user_config["model_config"].get(
-                "model_revision", "main")
+            model_revision = user_config["model_config"].get("model_revision", "main")
             model_identifier = model_id.strip() + "-" + model_revision.strip()
-            logger.info(f"Starting serving for {model_identifier} ...")
-            model_hash = hashlib.md5(
-                model_identifier.encode()).hexdigest()[:12]
+            model_hash = hashlib.md5(model_identifier.encode()).hexdigest()[:12]
             serving_name = user_name.strip() + "-" + model_hash
             # serve.run(app, host=CONFIG.SERVE_RUN_HOST, name=serving_name, route_prefix="/" + serving_name, _blocking=False)
+            logger.info(f"Starting serving for {model_identifier} ...")
             serve.run(target=app, name=serving_name, route_prefix="/" + serving_name, blocking=False)
+            logger.info(f"Done serving model {model_id} on /{serving_name}")
             started_serving[serving_name] = value
+        logger.info(f"start all serving done")
         return started_serving
 
     @app.get("/list_serving")
@@ -1056,11 +1054,12 @@ class ApiServer:
                     logger.info(f"parse non-oob model_id: {model.model_id}")
                     template = CONFIG.COMPARATION_LLMTEMPLATE
                     parsed_model = copy.deepcopy(template)
-                    if model.scaling_config:
-                        for key, value in model.scaling_config.__dict__.items():
-                            setattr(parsed_model.scaling_config, key, value)
                     parsed_model.model_config.model_id = model.model_id
                     parsed_models.append(parsed_model)
+                # set scaling_config
+                if model.scaling_config:
+                        for key, value in model.scaling_config.__dict__.items():
+                            setattr(parsed_models[0].scaling_config, key, value)
             
             for md in parsed_models:
                 user_config = md.dict()
@@ -1072,7 +1071,10 @@ class ApiServer:
                 max_ongoing_requests = deployment_config.pop(
                     "max_ongoing_requests", None
                 ) or (user_config["model_config"]["generation"].get("max_batch_size", 1) if user_config["model_config"]["generation"] else 1)
+                
                 name = _reverse_prefix(md.model_config.model_id)
+                logger.info(f"LLMDeployment.options for {name} with deployment_config={deployment_config}")
+                logger.info(f"LLMDeployment.options for {name} with user_config={user_config}")
                 deployment = LLMDeployment.options(  # pylint:disable=no-member
                     name=name,
                     max_ongoing_requests=max_ongoing_requests,
