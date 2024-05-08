@@ -6,7 +6,7 @@ metadata:
   name: opencsg
   namespace: ray
 spec:
-  rayVersion: '2.8.0' # should match the Ray version in the image of the containers
+  rayVersion: '2.20.0' # should match the Ray version in the image of the containers
   # Ray head pod template
   headGroupSpec:
     # The `rayStartParams` are used to configure the `ray start` command.

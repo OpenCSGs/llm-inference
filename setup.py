@@ -32,7 +32,7 @@ setup(
             "protobuf<3.21.0",
             "optimum",
             "safetensors",
-            "pydantic==1.10.7",
+            "pydantic==1.10.13",
             "einops",
             "markdown-it-py[plugins]",
             "scipy==1.11.1",

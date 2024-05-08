@@ -29,7 +29,7 @@ def parse_args(args: Union[str, LLMApp, List[Union[LLMApp, str]]]) -> List[LLMAp
     else:
         raw_models = [args]
 
-    logger.info(f"Parsing model args {raw_models}")
+    logger.info(f"Parsing model args: {raw_models}")
     # For each
     models: List[LLMApp] = []
     for raw_model in raw_models:
@@ -55,13 +55,14 @@ def _parse_path_args(path: str, isFt: bool) -> List[LLMApp]:
         apps = []
         for root, _dirs, files in os.walk(path):
             for p in files:
-                if not isFt:
-                    if p.startswith("ft-"):
-                        continue
                 if _is_yaml_file(p):
                     with open(os.path.join(root, p), "r") as f:
-                        logger.info(f"Found model file {f.name}")
-                        apps.append(LLMApp.parse_yaml(f))
+                        app = LLMApp.parse_yaml(f)
+                        # load oob models from dir ./models
+                        CONFIG.MODELS_MAPPING[app.model_config.model_id] = f.name
+                        apps.append(app)
+                        logger.info(f"found model [{app.model_config.model_id}] from {f.name}")
+        logger.info(f"load OOB {len(CONFIG.MODELS_MAPPING.keys())} models")
         return apps
     else:
         file_name = CONFIG.MODELS_MAPPING.get(path)
@@ -69,9 +70,7 @@ def _parse_path_args(path: str, isFt: bool) -> List[LLMApp]:
             with open(file_name, "r") as f:
                 return [LLMApp.parse_yaml(f)]
         else:
-            raise ValueError(
-                f"Could not load model from directory <./models/>"
-            )
+            raise ValueError(f"Could not load model from directory <./models/>")
 
 
 def _is_yaml_file(filename: str) -> bool:
