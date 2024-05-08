@@ -16,6 +16,7 @@ from fastapi import FastAPI, Body, Header
 from ray import serve
 from ray.exceptions import RayActorError
 from ray.serve.deployment import ClassNode
+from ray.serve.deployment import Application
 from ray.serve._private.constants import (DEFAULT_HTTP_PORT)
 
 from llmserve.backend.llm.predictor import LLMPredictor
@@ -51,6 +52,7 @@ from llmserve.common.utils import _replace_prefix, _reverse_prefix
 from starlette.responses import StreamingResponse
 from typing import AsyncGenerator, Generator
 from ray.serve.handle import DeploymentHandle, DeploymentResponseGenerator
+from threading import Thread
 
 # logger = get_logger(__name__)
 logger = get_logger("ray.serve")
@@ -79,6 +81,17 @@ class ModelIdentifier(BaseModel):
     model_id: str
     model_revision: str = "main"
 
+class ServeRunThread(Thread):
+    def __init__(self, target:Application, name:str, route_prefix:str):
+        super().__init__()
+        self.target = target
+        self.name = name
+        self.route_prefix = route_prefix
+    
+    # overwrite
+    def run(self):
+        logger.info(f"Server run {self.name} in thread")
+        serve.run(target=self.target, name=self.name, route_prefix=self.route_prefix, blocking=False)
 
 @serve.deployment(
     autoscaling_config={
@@ -700,8 +713,7 @@ class ApiServer:
         self.support_models = parse_args("./models")
 
     def list_deployment_from_ray(self, experimetal: bool) -> List[Any]:
-        serve_details = ServeInstanceDetails(
-            **ServeSubmissionClient(CONFIG.RAY_AGENT_ADDRESS).get_serve_details())
+        serve_details = ServeInstanceDetails(**ServeSubmissionClient(CONFIG.RAY_AGENT_ADDRESS).get_serve_details())
         deployments = []
         if experimetal:
             for key, value in serve_details.applications.items():
@@ -835,23 +847,19 @@ class ApiServer:
                 return {"response": "No models to load, model already exist."}
             for model in newload_model:
                 serve_name = _reverse_prefix(model)
-                app = ExperimentalDeployment.bind(  # pylint:disable=no-member
-                    self.deployments.get(model), self.model_configs.get(model))
+                app = ExperimentalDeployment.bind(self.deployments.get(model), self.model_configs.get(model))
                 ray._private.usage.usage_lib.record_library_usage("llmserve")
-                serve.run(app, host=CONFIG.SERVE_RUN_HOST, name=serve_name,
-                          route_prefix="/" + serve_name, _blocking=False)
+                serve.run(app, host=CONFIG.SERVE_RUN_HOST, name=serve_name, route_prefix="/" + serve_name, _blocking=False)
         return {"start_experimental": serve_name, "models": self.model_configs}
 
     @app.post("/start_serving")
-    async def start_serving(self, user_name: Annotated[str, Header()],
-                            models: Union[List[ModelConfig],
-                                          ModelConfig] = Body(...)
-                            ) -> Dict[str, Any]:
+    async def start_serving(self, user_name: Annotated[str, Header()], models: Union[List[ModelConfig], ModelConfig] = Body(...)) -> Dict[str, Any]:
         logger.info(f"api start serving {models}")
         models = [models] if isinstance(models, ModelConfig) else models
         self.load_model_for_comparation(models)
         # Create serving one by one under different application
         started_serving = {}
+        model_keys = []
         for key, value in self.compare_model_configs.items():
             deployment = {}
             model_config = {}
@@ -868,12 +876,14 @@ class ApiServer:
             model_identifier = model_id.strip() + "-" + model_revision.strip()
             model_hash = hashlib.md5(model_identifier.encode()).hexdigest()[:12]
             serving_name = user_name.strip() + "-" + model_hash
-            # serve.run(app, host=CONFIG.SERVE_RUN_HOST, name=serving_name, route_prefix="/" + serving_name, _blocking=False)
-            logger.info(f"Starting serving for {model_identifier} ...")
-            serve.run(target=app, name=serving_name, route_prefix="/" + serving_name, blocking=False)
+            logger.info(f"Starting serving for {model_identifier} by create thread ...")
+            #serve.run(target=app, name=serving_name, route_prefix="/" + serving_name, blocking=False)
+            t = ServeRunThread(target=app, name=serving_name, route_prefix="/" + serving_name)
+            t.start()
             logger.info(f"Done serving model {model_id} on /{serving_name}")
             started_serving[serving_name] = value
-        logger.info(f"start all serving done")
+            model_keys.append(key)
+        logger.info(f"start all serving {model_keys} done")
         return started_serving
 
     @app.get("/list_serving")
@@ -884,17 +894,16 @@ class ApiServer:
         serving_info = {}
         app_list = []
         if models:
-            models = [models] if isinstance(
-                models, ModelIdentifier) else models
+            models = [models] if isinstance(models, ModelIdentifier) else models
             for mod in models:
                 model_revision = mod.model_revision if mod.model_revision else "main"
                 mod_identifier = mod.model_id.strip() + "-" + model_revision.strip()
                 logger.info("Getting serving for {model_identifier} ...")
-                model_hash = hashlib.md5(
-                    mod_identifier.encode()).hexdigest()[:12]
+                model_hash = hashlib.md5(mod_identifier.encode()).hexdigest()[:12]
                 app_list.append(user_name.strip() + "-" + model_hash)
-        serve_details = ServeInstanceDetails(
-            **ServeSubmissionClient(CONFIG.RAY_AGENT_ADDRESS).get_serve_details())
+        logger.info(f"Begin read ray serve details")
+        serve_details = ServeInstanceDetails(**ServeSubmissionClient(CONFIG.RAY_AGENT_ADDRESS).get_serve_details())
+        logger.info(f"End read ray serve details")
         for app_name in serve_details.applications.keys():
             if app_list and app_name not in app_list:
                 continue
@@ -908,28 +917,23 @@ class ApiServer:
                 app_status = apps.get("status").value
                 route_prefix = apps.get("route_prefix")
                 # TBD need get real serve port, need write to ray deployment fristly?
-                serve_port = "8000"
+                # serve_port = "8000"
                 if "ExperimentalDeployment" in apps.get("deployments").keys():
                     for k, v in apps.get("deployments").items():
                         deployment_status[k] = v.get("status").value
                         if k != "ExperimentalDeployment":
-                            model_id = v.get("deployment_config").get(
-                                "user_config").get("model_config").get("model_id")
-                            model_url[model_id] = "/" + \
-                                _reverse_prefix(model_id)
+                            model_id = v.get("deployment_config").get("user_config").get("model_config").get("model_id")
+                            model_url[model_id] = "/" + _reverse_prefix(model_id)
                 elif "RouterDeployment" in apps.get("deployments").keys():
                     for k, v in apps.get("deployments").items():
                         deployment_status[k] = v.get("status").value
                         if k != "RouterDeployment":
-                            model_id = v.get("deployment_config").get(
-                                "user_config").get("model_config").get("model_id")
-                            model_url[model_id] = route_prefix + "/" + \
-                                _reverse_prefix(model_id) + "/run/predict"
+                            model_id = v.get("deployment_config").get("user_config").get("model_config").get("model_id")
+                            model_url[model_id] = route_prefix + "/" + _reverse_prefix(model_id) + "/run/predict"
                 else:
                     # Neither ExperimentalDeployment nor RouterDeployment is included in {model}, not a llm-serve application, pass
                     pass
-                serving_status[app_name] = {
-                    "application_status": app_status, "deployments_status": deployment_status}
+                serving_status[app_name] = {"application_status": app_status, "deployments_status": deployment_status}
                 model_info["status"] = serving_status
                 model_info["url"] = model_url
                 serving_info[app_name] = model_info
@@ -945,9 +949,9 @@ class ApiServer:
         for mod in models:
             model_revision = mod.model_revision if mod.model_revision else "main"
             mod_identifier = mod.model_id.strip() + "-" + model_revision.strip()
-            logger.info("Stopping serving for {model_identifier} ...")
             model_hash = hashlib.md5(mod_identifier.encode()).hexdigest()[:12]
             serving_name = user_name.strip() + "-" + model_hash
+            logger.info("Stopping serving for {model_identifier} ...")
             serve.delete(serving_name, _blocking=True)
             stopped_serving.append(mod.model_id)
         return {"Stopped Serving": stopped_serving}
@@ -955,14 +959,11 @@ class ApiServer:
     @app.get("/list_deployments")
     async def list_deployments(self) -> List[Any]:
         deployments = self.list_deployment_from_ray(True)
-
         return deployments
 
     @app.get("/list_apps")
     async def list_apps(self) -> Dict[str, Any]:
-        serve_details = ServeInstanceDetails(
-            **ServeSubmissionClient(CONFIG.RAY_AGENT_ADDRESS).get_serve_details())
-
+        serve_details = ServeInstanceDetails(**ServeSubmissionClient(CONFIG.RAY_AGENT_ADDRESS).get_serve_details())
         return serve_details.applications
 
     @app.get("/oob_models")
@@ -987,8 +988,8 @@ class ApiServer:
             "image-to-text": image2text,
         }
 
-    @app.get("/models")
-    async def get_model(self, models: List[str] = Body(..., description="models name", embed=True)) -> Dict[str, Any]:
+    @app.post("/models")
+    async def get_model(self, models: List[str] = Body(..., description="models name")) -> Dict[str, Any]:
         model_config = {}
         for model in models:
             model_config[model] = self.model_configs.get(model)
