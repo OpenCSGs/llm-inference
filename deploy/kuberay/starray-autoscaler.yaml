@@ -7,6 +7,7 @@ metadata:
   namespace: llm
 spec:
   rayVersion: '2.20.0' # should match the Ray version in the image of the containers
+  enableInTreeAutoscaling: true
   # Ray head pod template
   headGroupSpec:
     # The `rayStartParams` are used to configure the `ray start` command.
@@ -23,6 +24,9 @@ spec:
       spec:
         containers:
         - name: ray-head
+          env:
+            - name: RAY_enable_autoscaler_v2
+              value: "1"
           image: ropencsg/llm-inference:0.1.0-50665935ab2c
           resources:
             limits:
@@ -53,7 +57,7 @@ spec:
   # the pod replicas in this group typed worker
   - replicas: 1
     minReplicas: 1
-    maxReplicas: 1
+    maxReplicas: 5
     # logical group name, for this called small-group, also can be functional
     groupName: ray-node
     rayStartParams:
@@ -70,13 +74,13 @@ spec:
                 command: ["/bin/sh","-c","ray stop"]
           resources:
             limits:
-              cpu: 8
-              memory: 32Gi
-              nvidia.com/gpu: 1
+              cpu: 2
+              memory: 8Gi
+              #nvidia.com/gpu: 1
             requests:
-              cpu: 8
-              memory: 32Gi
-              nvidia.com/gpu: 1
+              cpu: 2
+              memory: 8Gi
+              #nvidia.com/gpu: 1
           volumeMounts:
           - name: local-model
             mountPath: /tmp/hub
