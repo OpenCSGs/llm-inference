@@ -1,5 +1,5 @@
 # build from Dockerfile-base
-FROM registry.cn-beijing.aliyuncs.com/opencsg_public/llmray:base-0.0.3
+FROM opencsg/llm-inference:base-0.0.3
 
 RUN sudo apt-get update && sudo apt-get install -y vim && sudo apt-get clean
 
