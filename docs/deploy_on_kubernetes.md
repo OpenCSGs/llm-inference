@@ -18,13 +18,13 @@ aws_access_key_id = dlwuVbseIlXR5GppudjxH
 aws_secret_access_key = aNINkp4MwMtthZpjbflxlsf3uZUaNpmBSQ0dcubgJ
 ```
 
-Build the base image of KubeRay with the docker file `deploy/ray/Dockerfile-base`. The default base image is `registry.cn-beijing.aliyuncs.com/opencsg_public/llmray:base-0.0.2`.
+Build the base image of KubeRay with the docker file `deploy/ray/Dockerfile-base`. The default base image is `opencsg/llm-inference:base-0.0.3`.
 
 ```
 ./build_llmserve_image_base.sh
 ```
 
-Build KubeRay image with docker file `deploy/ray/Dockerfile`. The default image is `registry.cn-beijing.aliyuncs.com/opencsg_public/llmray:0.0.2-<COMMIT ID>`.
+Build KubeRay image with docker file `deploy/ray/Dockerfile`. The default image is `opencsg/llm-inference:0.1.0-<COMMIT ID>`.
 
 ```
 ./build_llmserve_image.sh
@@ -41,14 +41,14 @@ helm repo update
 # Confirm the repo exists
 helm search repo kuberay --devel
 
-# Install both CRDs and KubeRay operator v1.0.0.
-helm install kuberay-operator kuberay/kuberay-operator --version 1.0.0
+# Install both CRDs and KubeRay operator v1.1.0.
+helm install kuberay-operator kuberay/kuberay-operator --version 1.1.0
 ```
 
 Install KubeRay operator with local tgz file:
 
 ```
-helm install --namespace ray kuberay-operator ./kuberay-operator-1.0.0.tgz
+helm install --namespace ray kuberay-operator ./kuberay-operator-1.1.0.tgz
 ```
 
 Install KubeRay operator from local directory:
@@ -58,6 +58,8 @@ cd kuberay-1.0.0/helm-chart/kuberay-operator
 helm install kuberay-operator --namespace ray .
 helm uninstall kuberay-operator --namespace ray
 ```
+
+See reference [here](https://github.com/ray-project/kuberay)
 
 ## Enable GPUs on Kubernetes
 

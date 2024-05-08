@@ -4,7 +4,7 @@ metadata:
   labels:
     controller-tools.k8s.io: "1.0"
   name: opencsg
-  namespace: llm
+  namespace: opencsg
 spec:
   rayVersion: '2.20.0' # should match the Ray version in the image of the containers
   enableInTreeAutoscaling: true
@@ -27,7 +27,7 @@ spec:
           env:
             - name: RAY_enable_autoscaler_v2
               value: "1"
-          image: ropencsg/llm-inference:0.1.0-50665935ab2c
+          image: opencsg/llm-inference:0.1.0-50665935ab2c
           resources:
             limits:
               cpu: 2
@@ -49,10 +49,15 @@ spec:
           volumeMounts:
           - name: local-model
             mountPath: /tmp/hub
+          #- name: local-yaml
+          #  mountPath: /home/ray/models
         volumes:
         - name: local-model
           hostPath:
             path: /data/minio/huggingface/hub
+        #- name: local-yaml
+        #  hostPath:
+        #    path: /data/minio/yaml
   workerGroupSpecs:
   # the pod replicas in this group typed worker
   - replicas: 1
@@ -84,10 +89,15 @@ spec:
           volumeMounts:
           - name: local-model
             mountPath: /tmp/hub
+          #- name: local-yaml
+          #  mountPath: /home/ray/models
         volumes:
         - name: local-model
           hostPath:
             path: /data/minio/huggingface/hub
+        #- name: local-yaml
+        #  hostPath:
+        #    path: /data/minio/yaml
         # Please add the following taints to the GPU node.
         tolerations:
           - key: "ray.io/node-type"
