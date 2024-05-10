@@ -219,7 +219,7 @@ def start_apiserver(port: int = DEFAULT_HTTP_PORT, resource_config: str = None, 
     serve.start(http_options={"host": SERVE_RUN_HOST, "port": serve_start_port})
     logger.info(f"Serve 'apiserver' is running at {SERVE_RUN_HOST}/{serve_start_port}")
     logger.info(f"Serve 'apiserver' run with resource: {resource_dict} , scale: {scale_dict}")
-    # serve.run(app, name="apiserver", route_prefix="/api")
+    serve.run(app, name="apiserver", route_prefix="/api")
 
 # parse k1=v1,k2=v2 to dict
 def toDict(kv: str) -> Dict:
