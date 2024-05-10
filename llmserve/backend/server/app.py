@@ -696,14 +696,13 @@ class ExperimentalDeployment(GradioIngress):
             return lambda: gr.Interface(self.query, **gr_params, title=self._model_configuration.model_config.model_id)
 
 @serve.deployment(
-    # TODO: make this configurable in llmserve run
     autoscaling_config={
         "min_replicas": 1,
         "initial_replicas": 1,
-        "max_replicas": 3,
-        "target_ongoing_requests": 10, # the average number of ongoing requests per replica that the Serve autoscaler tries to ensure
+        "max_replicas": 5,
+        "target_ongoing_requests": 3, # the average number of ongoing requests per replica that the Serve autoscaler tries to ensure
     },
-    max_ongoing_requests=30,  # the maximum number of ongoing requests allowed for a replica
+    max_ongoing_requests=5,  # the maximum number of ongoing requests allowed for a replica
 )
 @serve.ingress(app)
 class ApiServer:

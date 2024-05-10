@@ -27,6 +27,8 @@ separator_type = typer.Option(help="Separator used in prompt files")
 results_type = typer.Option(help="Where to save the results")
 file_type = typer.Option(default=..., help="The flow graph")
 evaluator_type = typer.Option(help="Which LLM to use for evaluation")
+apiserver_scale_type = typer.Option(default=..., help="A string of dict for scaling service. for example: --scale-config=min_replicas=1,max_replicas=5")
+apiserver_resource_type = typer.Option(default=..., help="A string of dict for resource requirement. for example: --resource-config=num_cpus=1")
 
 LOCAL_HOST = "127.0.0.1"
 
@@ -160,13 +162,16 @@ def comparation():
 
 
 @start_app.command()
-def apiserver(port: Annotated[Optional[int], port_type] = DEFAULT_HTTP_PORT):
+def apiserver(
+    port: Annotated[Optional[int], port_type] = DEFAULT_HTTP_PORT,
+    resource_config: Annotated[str, apiserver_resource_type] = None,
+    scale_config: Annotated[str, apiserver_scale_type] = None):
     """Start API server.
 
     Args:
         *port: The port to run.
     """
-    sdk.start_apiserver(port)
+    sdk.start_apiserver(port=port, resource_config=resource_config, scale_config=scale_config)
 
 
 stop_app = typer.Typer(
