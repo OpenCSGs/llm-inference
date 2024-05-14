@@ -207,7 +207,7 @@ def run_experimental(
     run_experimental(models=model, appname=appname, port=port)
 
 
-def start_apiserver(port: int = DEFAULT_HTTP_PORT) -> None:
+def start_apiserver(port: int = DEFAULT_HTTP_PORT, resource_config: str = None, scale_config: str = None) -> None:
     """Run Api server on the local ray cluster
 
     NOTE: This only works if you are running this command
@@ -217,8 +217,7 @@ def start_apiserver(port: int = DEFAULT_HTTP_PORT) -> None:
     """
     assert_has_backend()
     from llmserve.backend.server.run import start_apiserver
-
-    start_apiserver(port)
+    start_apiserver(port=port, resource_config=resource_config, scale_config=scale_config)
 
 
 def del_serve(app_name: str) -> None:

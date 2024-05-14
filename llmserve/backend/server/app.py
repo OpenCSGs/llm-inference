@@ -102,10 +102,11 @@ class ServeRunThread(Thread):
 @serve.deployment(
     autoscaling_config={
         "min_replicas": 1,
-        "initial_replicas": 2,
-        "max_replicas": 8,
+        "initial_replicas": 1,
+        "max_replicas": 3,
+        "target_ongoing_requests": 3, # the average number of ongoing requests per replica that the Serve autoscaler tries to ensure
     },
-    max_ongoing_requests=2,  # Maximum backlog for a single replica
+    max_ongoing_requests=5, # the maximum number of ongoing requests allowed for a replica
     health_check_period_s=10,
     health_check_timeout_s=30,
 )
@@ -458,13 +459,14 @@ class LLMDeployment(LLMPredictor):
         return f"{self.__class__.__name__}:{self.args.model_conf.model_id}"
 
 @serve.deployment(
-    # TODO make this configurable in llmserve run
+    # TODO: make this configurable in llmserve run
     autoscaling_config={
         "min_replicas": 1,
         "initial_replicas": 1,
-        "max_replicas": 2,
+        "max_replicas": 3,
+        "target_ongoing_requests": 10, # the average number of ongoing requests per replica that the Serve autoscaler tries to ensure
     },
-    max_ongoing_requests=50,  # Maximum backlog for a single replica
+    max_ongoing_requests=30,  # the maximum number of ongoing requests allowed for a replica
 )
 @serve.ingress(app)
 class RouterDeployment:
@@ -630,13 +632,14 @@ class RouterDeployment:
         return returnVal
 
 @serve.deployment(
-    # TODO make this configurable in llmserve run
+    # TODO: make this configurable in llmserve run
     autoscaling_config={
         "min_replicas": 1,
         "initial_replicas": 1,
         "max_replicas": 2,
+        "target_ongoing_requests": 3,
     },
-    max_ongoing_requests=50,  # Maximum backlog for a single replica
+    max_ongoing_requests=5,  # the maximum number of ongoing requests allowed for a replica
 )
 class ExperimentalDeployment(GradioIngress):
     def __init__(
@@ -699,13 +702,13 @@ class ExperimentalDeployment(GradioIngress):
             return lambda: gr.Interface(self.query, **gr_params, title=self._model_configuration.model_conf.model_id)
 
 @serve.deployment(
-    # TODO make this configurable in llmserve run
     autoscaling_config={
         "min_replicas": 1,
         "initial_replicas": 1,
-        "max_replicas": 2,
+        "max_replicas": 5,
+        "target_ongoing_requests": 3, # the average number of ongoing requests per replica that the Serve autoscaler tries to ensure
     },
-    max_ongoing_requests=50,  # Maximum backlog for a single replica
+    max_ongoing_requests=5,  # the maximum number of ongoing requests allowed for a replica
 )
 @serve.ingress(app)
 class ApiServer:
@@ -1065,8 +1068,8 @@ class ApiServer:
                     parsed_models.append(parsed_model)
                 # set scaling_config
                 if model.scaling_config:
-                        for key, value in model.scaling_config.__dict__.items():
-                            setattr(parsed_models[0].scaling_config, key, value)
+                    for key, value in model.scaling_config.__dict__.items():
+                        setattr(parsed_models[0].scaling_config, key, value)
             
             for md in parsed_models:
                 user_config = md.dict()

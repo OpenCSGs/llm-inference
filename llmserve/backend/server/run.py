@@ -1,8 +1,9 @@
 import sys
-from typing import List, Union, Optional, Dict
+from typing import Any, List, Union, Optional, Dict
 import datetime
 import ray._private.usage.usage_lib
 from ray import serve
+import json
 
 from llmserve.backend.server.app import LLMDeployment, RouterDeployment, ExperimentalDeployment, ApiServer
 # from llmserve.backend.server.app import ApplicationDeployment
@@ -192,7 +193,7 @@ def del_serve(app_name: str):
     serve.delete(app_name, _blocking=True)
 
 
-def start_apiserver(port: int = DEFAULT_HTTP_PORT):
+def start_apiserver(port: int = DEFAULT_HTTP_PORT, resource_config: str = None, scale_config: str = None):
     """Run the API Server on the local Ray Cluster
 
     Args:
@@ -200,15 +201,33 @@ def start_apiserver(port: int = DEFAULT_HTTP_PORT):
         *port: The port to run.     
 
     """
-    app = ApiServer.bind()  # pylint:disable=no-member
-
+    scale_dict = dict()
+    try:
+        scale_dict = toDict(scale_config)
+    except:
+        raise ValueError(f"Invalid value of scale config '{scale_config}'")
+    resource_dict = None
+    try:
+        resource_dict = toDict(resource_config)
+    except:
+        raise ValueError(f"Invalid value of resource config '{resource_config}'")
+    
     ray._private.usage.usage_lib.record_library_usage("llmserve")
     # ray.init(address="auto")
     serve_start_port = get_serve_start_port(port)
+    app = ApiServer.options(autoscaling_config=scale_dict, ray_actor_options=resource_dict).bind()
     serve.start(http_options={"host": SERVE_RUN_HOST, "port": serve_start_port})
     logger.info(f"Serve 'apiserver' is running at {SERVE_RUN_HOST}/{serve_start_port}")
+    logger.info(f"Serve 'apiserver' run with resource: {resource_dict} , scale: {scale_dict}")
     serve.run(app, name="apiserver", route_prefix="/api")
 
+# parse k1=v1,k2=v2 to dict
+def toDict(kv: str) -> Dict:
+    if kv:
+        s = kv.replace(' ', ', ')
+        return eval(f"dict({s})")
+    else:
+        return dict()
 
 def run_comparation():
     """Run the LLM Server on the local Ray Cluster
