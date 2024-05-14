@@ -12,7 +12,7 @@ deployment_config:
     upscale_delay_s: 60.0
   ray_actor_options:
     num_cpus: 0.1    # for a model deployment, we have 3 actor created, 1 and 2 will cost 0.1 cpu, and the model infrence will cost 6(see the setting in the end of the file)
-model_config:
+model_conf:
   warmup: True
   model_task: text-generation
   model_id: facebook/opt-125m
@@ -22,7 +22,7 @@ model_config:
       type: SingleDevice
       dtype: float32
       from_pretrained_kwargs:
-        use_cache: true
+        use_cache: True
         trust_remote_code: true
     pipeline: default
   generation:

@@ -169,7 +169,7 @@ class MockBackend(Backend):
     def metadata(self, llm: str) -> Dict[str, Dict[str, Any]]:
         return {
             "metadata": {
-                "model_config": {
+                "model_conf": {
                     "model_id": llm,
                     "model_url": f"https://huggingface.co/org/{llm}",
                     "model_description": f"This is a model description for model {llm}",

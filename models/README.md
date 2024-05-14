@@ -9,7 +9,7 @@ To modify an existing model, simply edit the YAML file for that model.
 Each config file consists of three parts:
 
 - `deployment_config`
-- `model_config`
+- `model_conf`
 - `scaling_config`
 
 It is better to check out examples of existing models to see how they are configured.
@@ -20,7 +20,7 @@ and specifies how to [auto-scale the model](https://docs.ray.io/en/latest/serve/
 (via `autoscaling_config`) and what specific options you may need for your
 Ray Actors during deployments (using `ray_actor_options`).
 
-The `model_config` section specifies the Hugging Face model ID (`model_id`), how to initialize it (`initialization`) and what parameters to use when generating tokens
+The `model_conf` section specifies the Hugging Face model ID (`model_id`), how to initialize it (`initialization`) and what parameters to use when generating tokens
 with an LLM (`generation`). We use Hugging Face Transformers under the hood.
 llm-serve implements several types of initializer:
 
@@ -68,7 +68,7 @@ deployment_config:
     resources:
       instance_type_m5: 0.01
 
-model_config:
+model_conf:
   # Hugging Face model id
   model_id: mosaicml/mpt-7b-instruct
   initialization:
@@ -142,7 +142,7 @@ For instance, the version of "chat" stored in mosaicml--mpt-7b-chat.yaml has onl
 
 ```yaml
 ...
-model_config:
+model_conf:
   model_id: mosaicml/mpt-7b-chat
   initialization:
     s3_mirror_config:

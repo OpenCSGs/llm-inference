@@ -36,7 +36,7 @@ def parse_args(args: Union[str, LLMApp, List[Union[LLMApp, str]]]) -> List[LLMAp
         if isinstance(raw_model, str):
             parsed_models = _parse_path_args(raw_model, False)
         else:
-            parsed_models = [LLMApp.parse_obj(raw_model)]
+            parsed_models = [LLMApp.model_validate(raw_model)]
         models += parsed_models
     return [model for model in models if model.enabled]
 
@@ -59,9 +59,9 @@ def _parse_path_args(path: str, isFt: bool) -> List[LLMApp]:
                     with open(os.path.join(root, p), "r") as f:
                         app = LLMApp.parse_yaml(f)
                         # load oob models from dir ./models
-                        CONFIG.MODELS_MAPPING[app.model_config.model_id] = f.name
+                        CONFIG.MODELS_MAPPING[app.model_conf.model_id] = f.name
                         apps.append(app)
-                        logger.info(f"found model [{app.model_config.model_id}] from {f.name}")
+                        logger.info(f"found model [{app.model_conf.model_id}] from {f.name}")
         logger.info(f"load OOB {len(CONFIG.MODELS_MAPPING.keys())} models")
         return apps
     else:

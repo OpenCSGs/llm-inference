@@ -12,7 +12,7 @@ deployment_config:
     upscale_delay_s: 90.0
   ray_actor_options:
     num_cpus: 0.1    # for a model deployment, we have 3 actor created, 1 and 2 will cost 0.1 cpu, and the model infrence will cost 6(see the setting in the end of the file)
-model_config:
+model_conf:
   warmup: True
   model_task: image-to-text
   model_id: nlpconnect/vit-gpt2-image-captioning

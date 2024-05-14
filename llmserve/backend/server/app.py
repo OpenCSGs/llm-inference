@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 import asyncio
 import copy
 import time
@@ -67,8 +67,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
+#TODO @depengli need reuse the defination in model.py of move to there
 class ModelConfig(BaseModel):
+    model_config = ConfigDict(
+        protected_namespaces=()
+    )
     model_id: str
     model_task: str
     model_revision: str
@@ -76,8 +79,11 @@ class ModelConfig(BaseModel):
     # initialization: InitializationConfig
     scaling_config: Scaling_Config_Simple
 
-
+#TODO @depengli need reuse the defination in model.py of move to there
 class ModelIdentifier(BaseModel):
+    model_config = ConfigDict(
+        protected_namespaces=()
+    )
     model_id: str
     model_revision: str = "main"
 
@@ -131,20 +137,20 @@ class LLMDeployment(LLMPredictor):
         if not old_args:
             return True
 
-        if old_args.model_config.initialization != new_args.model_config.initialization:
+        if old_args.model_conf.initialization != new_args.model_conf.initialization:
             return True
 
         if (
-            old_args.model_config.generation.max_batch_size
-            != new_args.model_config.generation.max_batch_size
-            and isinstance(new_args.model_config.initialization.initializer, DeepSpeed)
+            old_args.model_conf.generation.max_batch_size
+            != new_args.model_conf.generation.max_batch_size
+            and isinstance(new_args.model_conf.initialization.initializer, DeepSpeed)
         ):
             return True
 
         # TODO: Allow this
         if (
-            old_args.model_config.generation.prompt_format
-            != new_args.model_config.generation.prompt_format
+            old_args.model_conf.generation.prompt_format
+            != new_args.model_conf.generation.prompt_format
         ):
             return True
 
@@ -157,7 +163,7 @@ class LLMDeployment(LLMPredictor):
     ) -> None:
         logger.info("LLM Deployment Reconfiguring...")
         if not isinstance(config, Args):
-            new_args: Args = Args.parse_obj(config)
+            new_args: Args = Args.model_validate(config)
         else:
             new_args: Args = config
 
@@ -176,11 +182,11 @@ class LLMDeployment(LLMPredictor):
 
     @property
     def max_batch_size(self):
-        return (self.args.model_config.generation.max_batch_size if self.args.model_config.generation else 1)
+        return (self.args.model_conf.generation.max_batch_size if self.args.model_conf.generation else 1)
 
     @property
     def batch_wait_timeout_s(self):
-        return (self.args.model_config.generation.batch_wait_timeout_s if self.args.model_config.generation else 10)
+        return (self.args.model_conf.generation.batch_wait_timeout_s if self.args.model_conf.generation else 10)
 
     def get_max_batch_size(self):
         return self.max_batch_size
@@ -189,24 +195,24 @@ class LLMDeployment(LLMPredictor):
         return self.batch_wait_timeout_s
 
     async def validate_prompt(self, prompt: Prompt) -> None:
-        if len(prompt.prompt.split()) > self.args.model_config.max_input_words:
+        if len(prompt.prompt.split()) > self.args.model_conf.max_input_words:
             raise PromptTooLongError(
                 f"Prompt exceeds max input words of "
-                f"{self.args.model_config.max_input_words}. "
+                f"{self.args.model_conf.max_input_words}. "
                 "Please make the prompt shorter."
             )
 
     @app.get("/metadata", include_in_schema=False)
     async def metadata(self) -> dict:
-        return self.args.dict(
+        return self.args.model_dump(
             exclude={
-                "model_config": {"initialization": {"s3_mirror_config", "runtime_env"}}
+                "model_conf": {"initialization": {"s3_mirror_config", "runtime_env"}}
             }
         )
 
     @app.post("/", include_in_schema=False)
     async def generate_text(self, prompt: Prompt, generate: dict[str, str] = {}):
-        if self.args.model_config.model_task == "text-generation":
+        if self.args.model_conf.model_task == "text-generation":
             await self.validate_prompt(prompt)
         
         with async_timeout.timeout(GATEWAY_TIMEOUT_S):
@@ -221,7 +227,7 @@ class LLMDeployment(LLMPredictor):
     @app.post("/batch", include_in_schema=False)
     async def batch_generate_text(self, prompts: List[Prompt], generate: dict[str, str] = {}):
         logger.info(f"batch_generate_text prompts: {prompts} ")
-        if self.args.model_config.model_task == "text-generation":
+        if self.args.model_conf.model_task == "text-generation":
             for prompt in prompts:
                 await self.validate_prompt(prompt)
                 
@@ -449,7 +455,7 @@ class LLMDeployment(LLMPredictor):
             yield s
 
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}:{self.args.model_config.model_id}"
+        return f"{self.__class__.__name__}:{self.args.model_conf.model_id}"
 
 @serve.deployment(
     # TODO make this configurable in llmserve run
@@ -511,9 +517,9 @@ class RouterDeployment:
         #     *(await asyncio.gather(*[self._models[model].metadata.remote()]))
         # )
         # metadata = metadata[0]
-        metadata = self._model_configurations[model].dict(
+        metadata = self._model_configurations[model].model_dump(
             exclude={
-                "model_config": {"initialization": {"s3_mirror_config", "runtime_env"}}
+                "model_conf": {"initialization": {"s3_mirror_config", "runtime_env"}}
             }
         )
         logger.info(metadata)
@@ -640,8 +646,8 @@ class ExperimentalDeployment(GradioIngress):
         self._model = model
         # TODO: Remove this once it is possible to reconfigure models on the fly
         self._model_configuration = model_configuration
-        self.batch_size = self._model_configuration.model_config.generation.max_batch_size if self._model_configuration.model_config.generation else 1
-        self.hg_task = self._model_configuration.model_config.model_task
+        self.batch_size = self._model_configuration.model_conf.generation.max_batch_size if self._model_configuration.model_conf.generation else 1
+        self.hg_task = self._model_configuration.model_conf.model_task
         pipeline_info = render_gradio_params(self.hg_task)
 
         self.pipeline_info = pipeline_info
@@ -658,7 +664,7 @@ class ExperimentalDeployment(GradioIngress):
             prompts = args[0]
         logger.info(f"ExperimentalDeployment query.prompts {prompts}")
         use_prompt_format = False
-        if self._model_configuration.model_config.generation and self._model_configuration.model_config.generation.prompt_format:
+        if self._model_configuration.model_conf.generation and self._model_configuration.model_conf.generation.prompt_format:
             use_prompt_format = True
         results = await asyncio.gather(*[(self._model.generate_text.remote(Prompt(prompt=prompts, use_prompt_format=use_prompt_format)))])
         logger.info(f"ExperimentalDeployment query.results {results}")
@@ -682,15 +688,16 @@ class ExperimentalDeployment(GradioIngress):
 
     def _chose_ui(self) -> Callable:
         logger.info(
-            f'Experiment Deployment chose ui for {self._model_configuration.model_config.model_id}')
+            f'Experiment Deployment chose ui for {self._model_configuration.model_conf.model_id}')
 
         gr_params = self.pipeline_info
         del gr_params["preprocess"]
         del gr_params["postprocess"]
         if self.hg_task == "text-generation":
-            return lambda: gr.ChatInterface(self.stream).queue(concurrency_count=self.batch_size)
+            # return lambda: gr.ChatInterface(self.stream).queue(concurrency_count=self.batch_size)
+            return lambda: gr.ChatInterface(self.stream).queue()
         else:
-            return lambda: gr.Interface(self.query, **gr_params, title=self._model_configuration.model_config.model_id)
+            return lambda: gr.Interface(self.query, **gr_params, title=self._model_configuration.model_conf.model_id)
 
 @serve.deployment(
     # TODO make this configurable in llmserve run
@@ -744,7 +751,7 @@ class ApiServer:
                     if "RouterDeployment" in k:
                         continue
                     model_id = v.get("deployment_config").get(
-                        "user_config").get("model_config").get("model_id")
+                        "user_config").get("model_conf").get("model_id")
                     v["last_deployed_time_s"] = deploy_time
                     v["id"] = model_id
                     cmp_models.append(v.copy())
@@ -766,15 +773,15 @@ class ApiServer:
             raise RuntimeError("No enabled models were found.")
 
         for model in mds:
-            if model.model_config.model_id in self.model_configs.keys():
+            if model.model_conf.model_id in self.model_configs.keys():
                 continue
-            name = _reverse_prefix(model.model_config.model_id)
+            name = _reverse_prefix(model.model_conf.model_id)
             user_config = model.dict()
             deployment_config = model.deployment_config.dict()
             deployment_config = deployment_config.copy()
             max_ongoing_requests = deployment_config.pop(
                 "max_ongoing_requests", None
-            ) or (user_config["model_config"]["generation"].get("max_batch_size", 1) if user_config["model_config"]["generation"] else 1)
+            ) or (user_config["model_conf"]["generation"].get("max_batch_size", 1) if user_config["model_conf"]["generation"] else 1)
             deployment = LLMDeployment.options(  # pylint:disable=no-member
                 name=name,
                 max_ongoing_requests=max_ongoing_requests,
@@ -782,13 +789,13 @@ class ApiServer:
                 **deployment_config,
             ).bind()
             if not comparation:
-                self.model_configs[model.model_config.model_id] = model
-                self.deployments[model.model_config.model_id] = deployment
+                self.model_configs[model.model_conf.model_id] = model
+                self.deployments[model.model_conf.model_id] = deployment
             else:
-                self.compare_model_configs[model.model_config.model_id] = model
-                self.compare_deployments[model.model_config.model_id] = deployment
-            newload_model.append(model.model_config.model_id)
-            logger.info(f"Appended {model.model_config.model_id}")
+                self.compare_model_configs[model.model_conf.model_id] = model
+                self.compare_deployments[model.model_conf.model_id] = deployment
+            newload_model.append(model.model_conf.model_id)
+            logger.info(f"Appended {model.model_conf.model_id}")
         return newload_model
 
     def load_model_args(self, args: ModelConfig) -> Dict[str, Any]:
@@ -804,7 +811,7 @@ class ApiServer:
         #        setattr(model.model_config.initialization.initializer,key,value)
         # if args.initialization.pipeline:
         #    model.model_config.initialization.pipeline =  args.initialization.pipeline
-        model.model_config.model_id = args.model_id
+        model.model_conf.model_id = args.model_id
         user_config = model.dict()
         if args.is_oob:
             deployment_config = model.deployment_config.dict()
@@ -813,7 +820,7 @@ class ApiServer:
         deployment_config = deployment_config.copy()
         max_ongoing_requests = deployment_config.pop(
             "max_ongoing_requests", None
-        ) or (user_config["model_config"]["generation"].get("max_batch_size", 1) if user_config["model_config"]["generation"] else 1)
+        ) or (user_config["model_conf"]["generation"].get("max_batch_size", 1) if user_config["model_conf"]["generation"] else 1)
 
         deployment = LLMDeployment.options(  # pylint:disable=no-member
             name=_reverse_prefix(args.model_id),
@@ -823,7 +830,7 @@ class ApiServer:
         ).bind()
 
         serve_name = _reverse_prefix(args.model_id)
-        serve_port = user_config["model_config"]["initialization"]["runtime_env"].get(
+        serve_port = user_config["model_conf"]["initialization"]["runtime_env"].get(
             "serve_port", DEFAULT_HTTP_PORT)
         app = ExperimentalDeployment.bind(  # pylint:disable=no-member
             deployment, model)
@@ -869,10 +876,10 @@ class ApiServer:
             ray._private.usage.usage_lib.record_library_usage("llmserve")
             # deployment_config = model_config[key].deployment_config.dict()
             user_config = value.dict()
-            model_id = _replace_prefix(user_config["model_config"].get("model_id"))
+            model_id = _replace_prefix(user_config["model_conf"].get("model_id"))
             # TBD: To add revision to model_config, that's needed to be implemented for CLI (in YAML) and API together.
             # ... For now, that's "main" before implement this.
-            model_revision = user_config["model_config"].get("model_revision", "main")
+            model_revision = user_config["model_conf"].get("model_revision", "main")
             model_identifier = model_id.strip() + "-" + model_revision.strip()
             model_hash = hashlib.md5(model_identifier.encode()).hexdigest()[:12]
             serving_name = user_name.strip() + "-" + model_hash
@@ -922,13 +929,13 @@ class ApiServer:
                     for k, v in apps.get("deployments").items():
                         deployment_status[k] = v.get("status").value
                         if k != "ExperimentalDeployment":
-                            model_id = v.get("deployment_config").get("user_config").get("model_config").get("model_id")
+                            model_id = v.get("deployment_config").get("user_config").get("model_conf").get("model_id")
                             model_url[model_id] = "/" + _reverse_prefix(model_id)
                 elif "RouterDeployment" in apps.get("deployments").keys():
                     for k, v in apps.get("deployments").items():
                         deployment_status[k] = v.get("status").value
                         if k != "RouterDeployment":
-                            model_id = v.get("deployment_config").get("user_config").get("model_config").get("model_id")
+                            model_id = v.get("deployment_config").get("user_config").get("model_conf").get("model_id")
                             model_url[model_id] = route_prefix + "/" + _reverse_prefix(model_id) + "/run/predict"
                 else:
                     # Neither ExperimentalDeployment nor RouterDeployment is included in {model}, not a llm-serve application, pass
@@ -970,16 +977,16 @@ class ApiServer:
     async def list_oob_models(self) -> Dict[str, Any]:
         text, sum, image2text, trans, qa = [], [], [], [], []
         for model in self.support_models:
-            if model.model_config.model_task == "text-generation":
-                text.append(model.model_config.model_id)
-            if model.model_config.model_task == "translation":
-                trans.append(model.model_config.model_id)
-            if model.model_config.model_task == "summarization":
-                sum.append(model.model_config.model_id)
-            if model.model_config.model_task == "question-answering":
-                qa.append(model.model_config.model_id)
-            if model.model_config.model_task == "image-to-text":
-                image2text.append(model.model_config.model_id)
+            if model.model_conf.model_task == "text-generation":
+                text.append(model.model_conf.model_id)
+            if model.model_conf.model_task == "translation":
+                trans.append(model.model_conf.model_id)
+            if model.model_conf.model_task == "summarization":
+                sum.append(model.model_conf.model_id)
+            if model.model_conf.model_task == "question-answering":
+                qa.append(model.model_conf.model_id)
+            if model.model_conf.model_task == "image-to-text":
+                image2text.append(model.model_conf.model_id)
         return {
             "text-generation": text,
             "translation": trans,
@@ -1003,8 +1010,8 @@ class ApiServer:
             if model.model_id != mod.get("id"):
                 continue
             md = mod.get("deployment_config").get("user_config")
-            md = LLMApp(scaling_config=md.get("scaling_config"), model_config=md.get(
-                "model_config"), deployment_config=md.get("deployment_config"))
+            md = LLMApp(scaling_config=md.get("scaling_config"), model_conf=md.get(
+                "model_conf"), deployment_config=md.get("deployment_config"))
             if model.scaling_config:
                 for key, value in model.scaling_config.__dict__.items():
                     setattr(md.scaling_config, key, value)
@@ -1014,7 +1021,7 @@ class ApiServer:
                 deployment_config = deployment_config.copy()
                 max_ongoing_requests = deployment_config.pop(
                     "max_ongoing_requests", None
-                ) or (user_config["model_config"]["generation"].get("max_batch_size", 1) if user_config["model_config"]["generation"] else 1)
+                ) or (user_config["model_conf"]["generation"].get("max_batch_size", 1) if user_config["model_conf"]["generation"] else 1)
 
                 deployment = LLMDeployment.options(  # pylint:disable=no-member
                     name=serve_conf["name"],
@@ -1029,7 +1036,7 @@ class ApiServer:
                 serve.run(app, host=CONFIG.SERVE_RUN_HOST,
                           name=serve_conf["name"], route_prefix="/" + serve_conf["name"], _blocking=False)
                 try:
-                    serve_port = user_config["model_config"]["initialization"]["runtime_env"].get(
+                    serve_port = user_config["model_conf"]["initialization"]["runtime_env"].get(
                         "serve_port", DEFAULT_HTTP_PORT)
                 except:
                     serve_port = DEFAULT_HTTP_PORT
@@ -1055,7 +1062,7 @@ class ApiServer:
                     logger.info(f"parse non-oob model_id: {model.model_id}")
                     template = CONFIG.COMPARATION_LLMTEMPLATE
                     parsed_model = copy.deepcopy(template)
-                    parsed_model.model_config.model_id = model.model_id
+                    parsed_model.model_conf.model_id = model.model_id
                     parsed_models.append(parsed_model)
                 # set scaling_config
                 if model.scaling_config:
@@ -1071,9 +1078,9 @@ class ApiServer:
                 deployment_config = deployment_config.copy()
                 max_ongoing_requests = deployment_config.pop(
                     "max_ongoing_requests", None
-                ) or (user_config["model_config"]["generation"].get("max_batch_size", 1) if user_config["model_config"]["generation"] else 1)
+                ) or (user_config["model_conf"]["generation"].get("max_batch_size", 1) if user_config["model_conf"]["generation"] else 1)
                 
-                name = _reverse_prefix(md.model_config.model_id)
+                name = _reverse_prefix(md.model_conf.model_id)
                 logger.info(f"LLMDeployment.options for {name} with deployment_config={deployment_config}")
                 logger.info(f"LLMDeployment.options for {name} with user_config={user_config}")
                 deployment = LLMDeployment.options(  # pylint:disable=no-member
@@ -1083,8 +1090,8 @@ class ApiServer:
                     **deployment_config,
                 ).bind()
 
-                self.compare_model_configs[md.model_config.model_id] = md
-                self.compare_deployments[md.model_config.model_id] = deployment
+                self.compare_model_configs[md.model_conf.model_id] = md
+                self.compare_deployments[md.model_conf.model_id] = deployment
         return
 
     def run_frontend(self, prefix, compare_prefix):
@@ -1167,8 +1174,8 @@ class ApiServer:
         text = []
 
         for model in self.support_models:
-            if model.model_config.model_task == "text-generation":
-                text.append(model.model_config.model_id)
+            if model.model_conf.model_task == "text-generation":
+                text.append(model.model_conf.model_id)
         return {
             "text-generation": text,
         }
