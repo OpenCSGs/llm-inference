@@ -694,8 +694,7 @@ class ExperimentalDeployment(GradioIngress):
         del gr_params["preprocess"]
         del gr_params["postprocess"]
         if self.hg_task == "text-generation":
-            # return lambda: gr.ChatInterface(self.stream).queue(concurrency_count=self.batch_size)
-            return lambda: gr.ChatInterface(self.stream).queue()
+            return lambda: gr.ChatInterface(self.stream, concurrency_limit=self.batch_size).queue()
         else:
             return lambda: gr.Interface(self.query, **gr_params, title=self._model_configuration.model_conf.model_id)
 
