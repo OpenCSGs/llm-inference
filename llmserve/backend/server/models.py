@@ -577,6 +577,11 @@ class AutoscalingConfig(BaseModelExtended):
     upscale_delay_s: NonNegativeFloat = 30.0
 
 class DeploymentConfig(BaseModelExtended):
+    # TODO, previously, the AutoscalingConfig refer to ray as: "from ray.serve.config import AutoscalingConfig"
+    # but after we upgrade pydantic to v2, we get problem, since in ray, they use pydantic.v1 when v2 installed. see"
+    # https://github.com/ray-project/ray/blob/b7d6d184084385068686363ac2eb519d9e693974/python/ray/_private/pydantic_compat.py#L57
+    # the two version will cause incompatible and get exception: TypeError: BaseModel.validate() takes 2 positional arguments but 3 were given
+    # that's why I have to defined our own AutoscalingConfig and I will keep watching ray, after they turn to v2, recover the previously implements
     autoscaling_config: Optional[AutoscalingConfig] = None
     max_ongoing_requests: Optional[int] = None
     ray_actor_options: Optional[Dict[str, Any]] = None
