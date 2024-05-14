@@ -16,6 +16,8 @@ from vllm.config import SchedulerConfig as VllmSchedulerConfig
 from vllm.engine.arg_utils import AsyncEngineArgs
 from vllm.engine.async_llm_engine import AsyncLLMEngine, AsyncStream, _AsyncLLMEngine
 from llmserve.backend.llm.utils import get_model_location_on_disk
+from vllm.usage.usage_lib import UsageContext
+from .ray_gpu_executor import RayGPUExecutorConstrainedMem
 
 from .error_handling import InputTooLong
 
@@ -33,11 +35,13 @@ VllmConfigs = Tuple[
     VllmCacheConfig, VllmModelConfig, VllmParallelConfig, VllmSchedulerConfig
 ]
 
+from vllm.engine.ray_utils import initialize_ray_cluster
+
 
 class LLMEngineRay(_AsyncLLMEngine):
-    def __init__(self, *args, runtime_env: dict, **kwargs):
-        self.runtime_env = runtime_env
-        logger.info(f"args: {args}, kwargs: {kwargs}")
+    # def __init__(self, *args, runtime_env: dict, **kwargs):
+    def __init__(self, *args, **kwargs):    
+        # self.runtime_env = runtime_env
         super().__init__(*args, **kwargs)
 
     def _init_workers_ray(self, placement_group: "PlacementGroup", **ray_remote_kwargs):
@@ -70,8 +74,8 @@ class LLMEngineRay(_AsyncLLMEngine):
     
 def _get_vllm_engine_config(args: Args) -> Tuple[AsyncEngineArgs, VllmConfigs]:
     # Generate engine arguements and engine configs
-    model_id_or_path = get_model_location_on_disk(args.model_config.actual_hf_model_id)
-    logger.info(f"initializer_kwargs: {args.model_config.initialization.initializer.get_initializer_kwargs()}")
+    model_id_or_path = get_model_location_on_disk(args.model_conf.actual_hf_model_id)
+
     async_engine_args = AsyncEngineArgs(
         # This is the local path on disk, or the hf model id
         # If it is the hf_model_id, vllm automatically downloads the correct model.
@@ -80,41 +84,42 @@ def _get_vllm_engine_config(args: Args) -> Tuple[AsyncEngineArgs, VllmConfigs]:
             worker_use_ray=True,
             engine_use_ray=False,
             tensor_parallel_size=args.scaling_config.num_workers,
-            max_model_len=args.model_config.max_input_words,
+            max_model_len=args.model_conf.max_input_words,
             disable_log_stats=False,
             max_log_len=64,
-            **args.model_config.initialization.initializer.get_initializer_kwargs(),
+            **args.model_conf.initialization.initializer.get_initializer_kwargs(),
         )
     )
-    configs = async_engine_args.create_engine_configs()
+    configs = async_engine_args.create_engine_config()
     return async_engine_args, configs
 
 
 class AsyncLLMEngineRay(AsyncLLMEngine):
-    _engine_class: Type[_AsyncLLMEngine] = LLMEngineRay
+    # _engine_class: Type[_AsyncLLMEngine] = LLMEngineRay
 
-    async def add_request(
-        self,
-        request_id: str,
-        prompt: Optional[str],
-        sampling_params: "SamplingParams",
-        prompt_token_ids: Optional[List[int]] = None,
-        arrival_time: Optional[float] = None,
-        **kwargs,
-    ) -> AsyncStream:
-        if arrival_time is None:
-            arrival_time = time.time()
-        prompt_token_ids = await self.engine._encode_request_async(
-            request_id, prompt, prompt_token_ids
-        )
-        return await super().add_request(
-            request_id=request_id,
-            prompt=prompt,
-            sampling_params=sampling_params,
-            prompt_token_ids=prompt_token_ids,
-            arrival_time=arrival_time,
-            **kwargs,
-        )
+    # async def add_request(
+    #     self,
+    #     request_id: str,
+    #     prompt: Optional[str],
+    #     sampling_params: "SamplingParams",
+    #     prompt_token_ids: Optional[List[int]] = None,
+    #     arrival_time: Optional[float] = None,
+    #     **kwargs,
+    # ) -> AsyncStream:
+    #     if arrival_time is None:
+    #         arrival_time = time.time()
+    #     prompt_token_ids = await self.engine._encode_request_async(
+    #         request_id, prompt, prompt_token_ids
+    #     )
+    #     return await super().add_request(
+    #         request_id=request_id,
+    #         prompt=prompt,
+    #         sampling_params=sampling_params,
+    #         prompt_token_ids=prompt_token_ids,
+    #         arrival_time=arrival_time,
+    #         **kwargs,
+    #     )
+
 
     @classmethod
     def from_llm_app(
@@ -123,34 +128,40 @@ class AsyncLLMEngineRay(AsyncLLMEngine):
         scaling_options: dict,
         placement_group: PlacementGroup,
         runtime_env: dict,
+        usage_context: UsageContext = UsageContext.ENGINE_CONTEXT,
     ) -> "AsyncLLMEngineRay":
         """Creates an async LLM engine from the engine arguments."""
-
-        # When using gpu special type, vllm does a type check that requires
-        # torch to have access to CUDA devices. We use a remote task
-        # with `num_gpus` set here, so the type check happens in an environment
-        # with `CUDA_VISIBLE_DEVICES` set.
-        engine_args, engine_configs = ray.get(
-            ray.remote(_get_vllm_engine_config)
-            .options(**scaling_options)
-            .remote(args)
-        )
-        logger.info(f"vllm create {cls}")
-        logger.info(f"vllm engine.args: {engine_args}")
-        logger.info(f"vllm engine_configs: {engine_configs}")
+        engine_args, engine_config = _get_vllm_engine_config(args)
+        
+        # comment this, since we address the driver process in the pg
+        # engine_config.parallel_config.placement_group = placement_group
+        if engine_config.device_config.device_type == "neuron":
+            from vllm.executor.neuron_executor import NeuronExecutorAsync
+            executor_class = NeuronExecutorAsync
+        elif engine_config.device_config.device_type == "cpu":
+            assert not engine_config.parallel_config.worker_use_ray, (
+                "Ray is not supported with the CPU backend.")
+            from vllm.executor.cpu_executor import CPUExecutorAsync
+            executor_class = CPUExecutorAsync
+        elif engine_config.parallel_config.worker_use_ray:
+            initialize_ray_cluster(engine_config.parallel_config)
+            executor_class = RayGPUExecutorConstrainedMem
+        else:
+            assert engine_config.parallel_config.world_size == 1, (
+                "Ray is required if parallel_config.world_size > 1.")
+            from vllm.executor.gpu_executor import RayGPUExecutorAsync
+            executor_class = GPUExecutorAsync
         # Create the async LLM engine.
         engine = cls(
-            engine_args.worker_use_ray,
+            engine_config.parallel_config.worker_use_ray,
             engine_args.engine_use_ray,
-            *engine_configs,
-            None,
-            placement_group,
-            runtime_env=runtime_env,
+            **engine_config.to_dict(),
+            executor_class=executor_class,
             log_requests=not engine_args.disable_log_requests,
             log_stats=not engine_args.disable_log_stats,
             max_log_len=engine_args.max_log_len,
             start_engine_loop=True,
+            usage_context=usage_context,
         )
-        
         return engine
     

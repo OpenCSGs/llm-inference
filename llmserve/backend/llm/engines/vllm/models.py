@@ -60,7 +60,7 @@ class SamplingParams(BaseModelExtended):
             kwargs["exclude"] = self._ignored_fields
         return super().model_dump(**kwargs)
 
-    @field_validator("stop", always=True)
+    @field_validator("stop")
     def validate_stopping_sequences(cls, values):  # pylint: disable=no-self-argument
         if not values:
             return values
