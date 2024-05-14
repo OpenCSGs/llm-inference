@@ -33,7 +33,7 @@ def list_models(path: str = "./models") -> Dict[str, Dict[str, Any]]:
     for file in files:
         with open(file, "r") as stream:
             try:
-                model_config = yaml.safe_load(stream).get("model_config")
+                model_config = yaml.safe_load(stream).get("model_conf")
                 model_id = model_config.get("model_id")
                 models[model_id] = model_config
                 # print(model_id)
@@ -289,7 +289,7 @@ def list_serving(appname: Optional[List[str]]) -> Dict[str, Any]:
                         model_id = (
                             v.get("deployment_config")
                             .get("user_config")
-                            .get("model_config")
+                            .get("model_conf")
                             .get("model_id")
                         )
                         model_url[model_id] = (
@@ -307,7 +307,7 @@ def list_serving(appname: Optional[List[str]]) -> Dict[str, Any]:
                         model_id = (
                             v.get("deployment_config")
                             .get("user_config")
-                            .get("model_config")
+                            .get("model_conf")
                             .get("model_id")
                         )
                         model_url[model_id] = (

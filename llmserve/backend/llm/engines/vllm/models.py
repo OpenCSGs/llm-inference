@@ -1,6 +1,6 @@
 from typing import Any, Dict, List, Optional, Set, TypeVar, Type
 import os
-from pydantic import BaseModel, validator
+from pydantic import BaseModel, field_validator
 from .error_handling import TooManyStoppingSequences
 from llmserve.backend.server.models import BaseModelExtended
 from llmserve.backend.llm.utils import (
@@ -58,9 +58,9 @@ class SamplingParams(BaseModelExtended):
     def dict(self, **kwargs):
         if kwargs.get("exclude", None) is None:
             kwargs["exclude"] = self._ignored_fields
-        return super().dict(**kwargs)
+        return super().model_dump(**kwargs)
 
-    @validator("stop", always=True)
+    @field_validator("stop", always=True)
     def validate_stopping_sequences(cls, values):  # pylint: disable=no-self-argument
         if not values:
             return values

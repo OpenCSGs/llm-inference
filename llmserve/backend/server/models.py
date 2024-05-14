@@ -6,12 +6,14 @@ import yaml
 from huggingface_hub import hf_hub_download, hf_hub_url
 from markdown_it import MarkdownIt
 from mdit_py_plugins.front_matter import front_matter_plugin
-from pydantic import BaseModel, Extra, Field, root_validator, validator
+from pydantic import field_validator, model_validator, BaseModel, Field, ConfigDict, NonNegativeInt, PositiveInt, PositiveFloat, NonNegativeFloat
 from ray.air import ScalingConfig as AIRScalingConfig
-from ray.serve.config import AutoscalingConfig
+# from ray.serve.config import AutoscalingConfig
 from typing_extensions import Annotated
 from transformers import SchedulerType
 from llmserve.backend.logger import get_logger
+from typing_extensions import Self
+
 
 logger = get_logger(__name__)
 
@@ -42,12 +44,15 @@ def markdown_extract_first_paragraph(markdown_text: str):
 
 
 class BaseModelExtended(BaseModel):
+    model_config = ConfigDict(
+            protected_namespaces=()
+        )
     @classmethod
     def parse_yaml(cls, file, **kwargs) -> "BaseModelExtended":
         kwargs.setdefault("Loader", yaml.SafeLoader)
         dict_args = yaml.load(file, **kwargs)
         try:
-            return cls.parse_obj(dict_args)
+            return cls.model_validate(dict_args)
         except:
             raise ValueError(f"Invalid values or format in {file.name}")
 
@@ -68,7 +73,7 @@ class BaseModelExtended(BaseModel):
         Generate a YAML representation of the model, `include` and `exclude` arguments as per `dict()`.
         """
         return yaml.dump(
-            self.dict(
+            self.model_dump(
                 include=include,
                 exclude=exclude,
                 by_alias=by_alias,
@@ -111,7 +116,7 @@ class ComputedPropertyMixin:
 
 
 class Prompt(BaseModelExtended):
-    prompt: Any
+    prompt: Any = None
     use_prompt_format: bool = True
 
     def __str__(self) -> str:
@@ -274,12 +279,15 @@ class TorchCompile(BaseModelExtended):
     options: Optional[Dict[str, Any]] = None
 
 
-class Initializer(BaseModelExtended, extra=Extra.forbid):
+class Initializer(BaseModelExtended, extra="forbid"):
     type: str
 
-    @root_validator(pre=True)
-    def set_type(cls, values):  # pylint:disable=no-self-argument
-        values["type"] = cls.__name__  # pylint:disable=no-member
+    @model_validator(mode="before")
+    @classmethod
+    def set_itype(cls, values):  # pylint:disable=no-self-argument
+        if isinstance(values, dict):
+            if 'type' not in values:
+                values["type"] = cls.__name__ # pylint:disable=no-member
         return values
 
     def get_initializer_kwargs(self) -> dict:
@@ -287,26 +295,26 @@ class Initializer(BaseModelExtended, extra=Extra.forbid):
         Get kwargs that will be actually passed to the LLMInitializer
         constructor.
         """
-        return self.dict(exclude={"type"})
+        return self.model_dump(exclude={"type"})
 
     @property
     def allowed_pipelines(self) -> Set[str]:
         return {}
 
 
-class Transformers(Initializer, extra=Extra.forbid):
+class Transformers(Initializer, extra="forbid"):
     use_bettertransformer: bool = False
     torch_compile: Optional[TorchCompile] = None
     dtype: str = "float16"
     from_pretrained_kwargs: Dict[str, Any] = {}
-
+    
     @property
     def torch_dtype(self) -> torch.dtype:
         return getattr(torch, self.dtype)
 
     def get_initializer_kwargs(self) -> dict:
         return {
-            **self.dict(exclude={"type", "from_pretrained_kwargs", "dtype"}),
+            **self.model_dump(exclude={"type", "from_pretrained_kwargs", "dtype"}),
             "dtype": self.torch_dtype,
             **self.from_pretrained_kwargs,
         }
@@ -328,7 +336,7 @@ class DeepSpeed(Transformers):
     save_mp_checkpoint_path: bool = False
     ds_inference_kwargs: Optional[Dict[str, Any]] = None
 
-    @root_validator
+    @model_validator(mode="before")
     def use_kernel_bettertransformer_torch_compile(cls, values):  # pylint:disable=no-self-argument
         if values.get("use_kernel") and (
             values.get("use_bettertransformer") or values.get("torch_compile")
@@ -338,7 +346,7 @@ class DeepSpeed(Transformers):
             )
         return values
 
-    @root_validator
+    @model_validator(mode="before")
     def use_kernel_use_meta_tensor(cls, values):  # pylint:disable=no-self-argument
         if not values.get("use_kernel") and values.get("use_meta_tensor"):
             raise ValueError("'use_meta_tensor=True' needs 'use_kernel=True'.")
@@ -355,9 +363,11 @@ class DeviceMap(Transformers):
 
 class SingleDevice(Transformers):
     type: Literal["SingleDevice"]
+    dtype: str = "float16"
 
 
-class LlamaCpp(Initializer):
+
+class LlamaCpp(Transformers):
     type: Literal["LlamaCpp"]
     model_filename: str
     # model_init_kwargs: Dict[str, Any] = {}
@@ -406,26 +416,25 @@ class InitializationConfig(BaseModelExtended):
         Union[DeepSpeed, DeviceMap, SingleDevice,
               LlamaCpp, Vllm], Field(discriminator="type")
     ]
+
     pipeline: Union[Literal["default"], Literal["defaulttransformers"],
                     Literal["llamacpp"], Literal["vllm"]] = None
     s3_mirror_config: Optional[S3MirrorConfig] = None
     runtime_env: Optional[Dict[str, Any]] = None
     hf_model_id: Optional[str] = None
 
-    @root_validator
-    def initializer_pipeline(cls, values):  # pylint:disable=no-self-argument
-        # logger.info(f"initializer_pipeline: ${values}")
-        pipeline = values.get("pipeline")
+    @model_validator(mode="after")
+    def initializer_pipeline(self) -> Self:  # pylint:disable=no-self-argument
+        pipeline = self.pipeline
         if pipeline:
-            initializer: Initializer = values.get("initializer")
-            # logger.info(f"pipeline: {pipeline}, values: {values}, initializer: {initializer}")
+            initializer: Initializer = self.initializer
             if pipeline not in initializer.allowed_pipelines:
                 raise ValueError(
                     f"'{pipeline}' pipeline cannot be used with '{initializer.type}' initializer. "
                     f"Allowed pipelines for this initializer are {initializer.allowed_pipelines}."
                 )
-        return values
 
+        return self
 
 class GenerationConfig(BaseModelExtended):
     prompt_format: Optional[str] = None
@@ -440,7 +449,8 @@ class GenerationConfig(BaseModelExtended):
     stopping_sequences: Optional[List[Union[str,
                                             int, List[Union[str, int]]]]] = None
 
-    @validator("prompt_format")
+    @field_validator("prompt_format")
+    @classmethod
     def check_prompt_format(cls, value):  # pylint:disable=no-self-argument
         if value:
             assert (
@@ -448,7 +458,8 @@ class GenerationConfig(BaseModelExtended):
             ), "prompt_format must be None, empty string or string containing '{instruction}'"
         return value
 
-    @validator("stopping_sequences")
+    @field_validator("stopping_sequences")
+    @classmethod
     def check_stopping_sequences(cls, value):  # pylint:disable=no-self-argument
         def try_int(x):
             if isinstance(x, list):
@@ -472,13 +483,14 @@ class LLMConfig(BaseModelExtended):
     model_task: str    # need verification, TODO
     model_id: str
     initialization: InitializationConfig
-    generation: GenerationConfig = None
+    generation: Optional[GenerationConfig] = None
     model_url: Optional[str] = None
     model_description: Optional[str] = None
     # TODO make this token-based
     max_input_words: int = 400
 
-    @root_validator(pre=True)
+    @model_validator(mode="before")
+    @classmethod
     def resolve_model_url_and_description(cls, values):  # pylint:disable=no-self-argument
         model_id = values.get("model_id")
         model_url = values.get("model_url")
@@ -542,16 +554,30 @@ class ScalingConfig(BaseModelExtended):
 
 
 class Args(BaseModelExtended):
-    model_config: LLMConfig
+    model_conf: LLMConfig
     scaling_config: ScalingConfig
 
     @property
     def air_scaling_config(self) -> AIRScalingConfig:
         return self.scaling_config.as_air_scaling_config()
+    
 
+class AutoscalingConfig(BaseModelExtended):
+    min_replicas: NonNegativeInt = 1
+    initial_replicas: Optional[NonNegativeInt] = None
+    max_replicas: PositiveInt = 1
+    target_ongoing_requests: Optional[PositiveFloat] = None
+    # How often to scrape for metrics
+    metrics_interval_s: PositiveFloat = 10.0
+    # Time window to average over for metrics.
+    look_back_period_s: PositiveFloat = 30.0
+    smoothing_factor: PositiveFloat = 1.0
+    downscale_delay_s: NonNegativeFloat = 600.0
+    # How long to wait before scaling up replicas
+    upscale_delay_s: NonNegativeFloat = 30.0
 
 class DeploymentConfig(BaseModelExtended):
-    autoscaling_config: Optional[AutoscalingConfig]
+    autoscaling_config: Optional[AutoscalingConfig] = None
     max_ongoing_requests: Optional[int] = None
     ray_actor_options: Optional[Dict[str, Any]] = None
 
@@ -563,7 +589,7 @@ class LLMApp(Args):
         kwargs.setdefault("Loader", yaml.SafeLoader)
         dict_args = yaml.load(file, **kwargs)
         try:
-            return cls.parse_obj(dict_args)
+            return cls.model_validate(dict_args)
         except:
             raise ValueError(f"Invalid values or format in {file.name}")
         
@@ -581,8 +607,8 @@ class DataConfig(BaseModelExtended):
     local_path: str = None
     train_file: str = None
     validation_file: str = None
-    input_columns: Optional[list[str]]
-    validation_column: Optional[str]
+    input_columns: Optional[list[str]] = None
+    validation_column: Optional[str] = None
     max_length: int = 384
     truncation: bool = True
     stride: int = 50

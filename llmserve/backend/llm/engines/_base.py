@@ -80,4 +80,4 @@ class LLMEngine(ABC):
         pass
 
     def reset_revision(self, revision: str):
-        self.args.model_config.initialization.initializer.reset_revision(revision)
+        self.args.model_conf.initialization.initializer.reset_revision(revision)

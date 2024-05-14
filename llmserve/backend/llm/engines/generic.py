@@ -341,7 +341,7 @@ class GenericEngine(LLMEngine):
         """
 
         config: Args = self.args  # pylint:disable=no-member
-        llm_config = config.model_config
+        llm_config = config.model_conf
         runtime_env = llm_config.initialization.runtime_env or {}
         prediction_worker_cls = PredictionWorker.options(  # pylint:disable=no-member
             **scaling_options, runtime_env=runtime_env
@@ -415,7 +415,7 @@ class GenericEngine(LLMEngine):
 
         logger.info('LLM GenericEngine do async predict')
 
-        preconf_args = self.args.model_config.generation.all_generate_kwargs if self.args.model_config.generation else {}
+        preconf_args = self.args.model_conf.generation.all_generate_kwargs if self.args.model_conf.generation else {}
         onfly_args = ray.get(generate)[0]
         generate_args = merge_dicts(
             preconf_args,
@@ -496,7 +496,7 @@ class GenericEngine(LLMEngine):
         Returns:
             A list of generated texts.
         """
-        preconf_args = self.args.model_config.generation.all_generate_kwargs if self.args.model_config.generation else {}
+        preconf_args = self.args.model_conf.generation.all_generate_kwargs if self.args.model_conf.generation else {}
         onfly_args = ray.get(generate)[0]
         generate_args = merge_dicts(
             preconf_args,
@@ -518,7 +518,7 @@ class GenericEngine(LLMEngine):
                     yield await result
         else:
             logger.warning(
-                f"Pipeline {self.args.model_config.initialization.pipeline} does not support streaming. Ignoring queue."
+                f"Pipeline {self.args.model_conf.initialization.pipeline} does not support streaming. Ignoring queue."
             )
             yield await self.predict(
                 prompts, generate, timeout_s=timeout_s, start_timestamp=start_timestamp, lock=lock

@@ -92,8 +92,8 @@ class LLMServeFrontend(GradioIngress):
                 [
                     MODEL_DESCRIPTION_FORMAT.format(
                         model_id=k,
-                        model_description=v["metadata"]["model_config"]["model_description"],
-                        model_url=v["metadata"]["model_config"]["model_url"],
+                        model_description=v["metadata"]["model_conf"]["model_description"],
+                        model_url=v["metadata"]["model_conf"]["model_url"],
                     )
                     for k, v in self.ALL_MODELS_METADATA.items()
                 ]

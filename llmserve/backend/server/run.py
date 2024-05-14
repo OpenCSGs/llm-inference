@@ -54,35 +54,35 @@ def llm_server(args: Union[str, LLMApp, List[Union[LLMApp, str]]]):
     deployments = {}
     model_configs = {}
     for model in models:
-        if model.model_config.model_id in model_configs:
+        if model.model_conf.model_id in model_configs:
             raise ValueError(
-                f"Duplicate model_id {model.model_config.model_id} specified. "
+                f"Duplicate model_id {model.model_conf.model_id} specified. "
                 "Please ensure that each model has a unique model_id. "
                 "If you want two models to share the same Hugging Face Hub ID, "
                 "specify initialization.hf_model_id in the model config."
             )
-        logger.info(f"Initializing LLM app {model.json(indent=2)}")
-        user_config = model.dict()
-        deployment_config = model.deployment_config.dict()
-        model_configs[model.model_config.model_id] = model
+        logger.info(f"Initializing LLM app {model.model_dump_json(indent=2)}")
+        user_config = model.model_dump()
+        deployment_config = model.deployment_config.model_dump()
+        model_configs[model.model_conf.model_id] = model
         deployment_config = deployment_config.copy()
 
-        if user_config.get("model_config", {}).get("initialization", {}).get("initializer", {}).get("type", None) == "Vllm" and user_config.get("model_config", {}).get("initialization", {}).get("runtime_env", None):
-            deployment_config["ray_actor_options"]["runtime_env"] = user_config.get("model_config", {}).get("initialization", {}).get("runtime_env", None)
+        # if user_config.get("model_config", {}).get("initialization", {}).get("initializer", {}).get("type", None) == "Vllm" and user_config.get("model_config", {}).get("initialization", {}).get("runtime_env", None):
+        #     deployment_config["ray_actor_options"]["runtime_env"] = user_config.get("model_config", {}).get("initialization", {}).get("runtime_env", None)
 
         max_ongoing_requests = deployment_config.pop(
             "max_ongoing_requests", None
-        ) or user_config.get("model_config", {}).get("generation", {}).get("max_batch_size", 1)
+        ) or user_config.get("model_conf", {}).get("generation", {}).get("max_batch_size", 1)
 
-        deployments[model.model_config.model_id] = LLMDeployment.options(  # pylint:disable=no-member
-            name=_reverse_prefix(model.model_config.model_id),
+        deployments[model.model_conf.model_id] = LLMDeployment.options(  # pylint:disable=no-member
+            name=_reverse_prefix(model.model_conf.model_id),
             max_ongoing_requests=max_ongoing_requests,
             user_config=user_config,
             **deployment_config,
         ).bind()
 
     return RouterDeployment.options(
-        name=('+'.join([_reverse_prefix(model.model_config.model_id) for model in models])) + "-router",
+        name=('+'.join([_reverse_prefix(model.model_conf.model_id) for model in models])) + "-router",
         max_ongoing_requests=max_ongoing_requests,
         **deployment_config,
     ).bind(deployments, model_configs)  # pylint:disable=no-member
@@ -115,25 +115,25 @@ def llm_experimental(args: Union[str, LLMApp, List[Union[LLMApp, str]]]):
 
     if isinstance(model, LLMApp):
         logger.info(
-            f"Initialized a LLM app instance of LLMApp {model.json(indent=2)}")
+            f"Initialized a LLM app instance of LLMApp {model.model_dump_json(indent=2)}")
     else:
         raise RuntimeError("Not a LLM app instance were found.")
 
-    user_config = model.dict()
+    user_config = model.model_dump()
     deployment_config = model.deployment_config.dict()
     deployment_config = deployment_config.copy()
     max_ongoing_requests = deployment_config.pop(
         "max_ongoing_requests", None
-    ) or (user_config["model_config"]["generation"].get("max_batch_size", 1) if user_config["model_config"]["generation"] else 1)
+    ) or (user_config["model_conf"]["generation"].get("max_batch_size", 1) if user_config["model_conf"]["generation"] else 1)
 
     deployment = LLMDeployment.options(  # pylint:disable=no-member
-        name=_reverse_prefix(model.model_config.model_id),
+        name=_reverse_prefix(model.model_conf.model_id),
         max_ongoing_requests=max_ongoing_requests,
         user_config=user_config,
         **deployment_config,
     ).bind()
     serve_conf = {
-        "name": _reverse_prefix(model.model_config.model_id)
+        "name": _reverse_prefix(model.model_conf.model_id)
     }
 
     return (ExperimentalDeployment.bind(deployment, model), serve_conf)  # pylint:disable=no-member

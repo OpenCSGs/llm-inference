@@ -49,7 +49,7 @@ class LLMPredictor:
 
             # init engine here
             config: Args = self.args  # pylint:disable=no-member
-            llm_config = config.model_config
+            llm_config = config.model_conf
             initializer_name = llm_config.initialization.initializer
             if not isinstance(initializer_name, str):
                 initializer_name = initializer_name.type
@@ -84,7 +84,7 @@ class LLMPredictor:
         gc.collect()
 
         config: Args = self.args  # pylint:disable=no-member
-        llm_config = config.model_config
+        llm_config = config.model_conf
 
         # Start a placement group for the workers.
         self.pg = scaling_config.as_placement_group_factory().to_placement_group()
