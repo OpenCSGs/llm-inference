@@ -18,12 +18,12 @@ import ray
 from llmserve.backend.server.utils import render_gradio_params
 import json
 
-
 from vllm.outputs import RequestOutput
 from vllm.sampling_params import SamplingParams
 
 logger = get_logger(__name__)
-class VllmEngine(LLMEngine):
+@ray.remote(num_gpus=0, num_cpus=0)
+class EngineWorker:
     _engine_cls = AsyncLLMEngineRay
 
     def __init__(
@@ -34,8 +34,7 @@ class VllmEngine(LLMEngine):
         if not (args.scaling_config.num_gpus_per_worker > 0):
             raise ValueError("The VLLM Engine Requires > 0 GPUs to run.")
         self.running = False
-        
-        super().__init__(args = args)
+        self.args = args
 
     async def launch_engine(
         self, 
@@ -49,10 +48,9 @@ class VllmEngine(LLMEngine):
             return
 
         config: Args = self.args  # pylint:disable=no-member
-        llm_config = config.model_config
+        llm_config = config.model_conf
         runtime_env = llm_config.initialization.runtime_env or {}
-        logger.info(f"begin calling vllm engine with args: {self.args}")
-        # return AsyncLLMEngine.from_engine_args(engine_args)
+
         self.engine = self._engine_cls.from_llm_app(
                 self.args,
                 scaling_options,
@@ -66,12 +64,12 @@ class VllmEngine(LLMEngine):
         warmup_success = False
         while not warmup_success and llm_config.warmup and warmup_inputs:
             prompt = [Prompt(prompt=warmup_inputs, use_prompt_format=False)]
-            data_ref = ray.put(prompt)
             try:
                 logger.info("start to test with single prompt")
                 logger.info(f"warmpup prompt is: {warmup_inputs}")
                 resp = await self.predict(
-                    data_ref,
+                    prompt,
+                    [{}],
                     timeout_s=120,
                     start_timestamp=None,
                     lock=None  
@@ -85,12 +83,11 @@ class VllmEngine(LLMEngine):
                 logger.warning(
                     f"Warmup failed due to CUDA OOM")
 
-        logger.info(f"Model {llm_config.model_id} succesfully initialized!")
+        logger.info(
+            f"Model {llm_config.model_id} succesfully initialized!")
 
         gc.collect()
         self.running = True
-
-        return self.engine
 
     def _parse_sampling_params(
         self, generate_kwargs: Dict[str, Any]
@@ -145,16 +142,12 @@ class VllmEngine(LLMEngine):
         Args:
             model_id (str): Hugging Face model ID.
         """
-        prompts = ray.get(prompts)
         streams = [list() for _ in range(len(prompts))]
         async for batch_response in self.stream(prompts, generate, timeout_s=timeout_s, start_timestamp=start_timestamp, lock=lock):
             for i, response in enumerate(batch_response):
                 streams[i].append(response)
 
         return [Response.merge_stream(*stream) for stream in streams]
-    
-    async def check_health(self):
-        logger.info("not implements yet...")
 
     async def stream(
         self,
@@ -174,12 +167,15 @@ class VllmEngine(LLMEngine):
             prompts = ray.get(prompts)
 
         if isinstance(generate, ray.ObjectRef):
-            generate = ray.get(generate)[0]
+            generate = ray.get(generate)
+
+        generate = generate[0]
         logger.info(f"get on fly params for generation: {generate}")
 
-        prompt_format=(self.args.model_config.generation.prompt_format if self.args.model_config.generation else None)
+        prompt_format=(self.args.model_conf.generation.prompt_format if self.args.model_conf.generation else None)
         
         logger.info(f"Get prompt: {prompts}")
+        logger.info(f"Get prompt format: {prompt_format}")
         inputs = construct_prompts(
             prompts, prompt_format=prompt_format)
 
@@ -187,7 +183,7 @@ class VllmEngine(LLMEngine):
         if len(inputs) > 1:
             logger.warn("vllm cannot handle more than 1 prompt with one line engine, try 'LLMEngine' if you want try static batch")
 
-        kwargs = self.args.model_config.generation.all_generate_kwargs if self.args.model_config.generation else {}
+        kwargs = self.args.model_conf.generation.all_generate_kwargs if self.args.model_conf.generation else {}
         logger.info(f"predefined generate params: {kwargs}")
 
         sampling_params = VLLMSamplingParams.merge_generation_params(
@@ -257,3 +253,102 @@ class VllmEngine(LLMEngine):
             # Ensure that we cancel on the engine once we have exited the streaming
             # phase
             self.engine._abort(request_id)
+
+
+class VllmEngine(LLMEngine):
+    async def launch_engine(
+            self, 
+            scaling_config: ScalingConfig,
+            placement_group: PlacementGroup,
+            scaling_options: dict,
+        ) -> Any:
+        """Load model.
+
+        Args:
+            model_id (str): Hugging Face model ID.
+        """
+        config: Args = self.args  # pylint:disable=no-member
+        llm_config = config.model_conf
+        runtime_env = llm_config.initialization.runtime_env or {}
+        scaling_options.pop("num_cpus")
+        scaling_options.pop("num_gpus")
+        scaling_options.pop("resources")
+        logger.info(f"Schedule engine launcher with: {scaling_options}")
+        engine_worker_cls = EngineWorker.options(  # pylint:disable=no-member
+            **scaling_options, runtime_env=runtime_env
+        )
+        
+        # Create the prediction workers.
+        logger.info("Creating vllm engine launcher...")
+        worker = engine_worker_cls.remote(config)
+        await asyncio.gather(
+            *[
+                worker.launch_engine.remote(
+                    scaling_config=scaling_config,
+                    placement_group=placement_group,
+                    scaling_options=scaling_options
+                )
+            ]
+        )
+
+        self.base_worker_group = [worker]
+        return [worker]
+
+    async def check_health(self):
+        logger.info("not implements yet...")
+
+    async def predict(
+            self,
+            prompts: List[Prompt],
+            generate: dict[str, str] = {},
+            *,
+            timeout_s: float = 60,
+            start_timestamp: Optional[float] = None,
+            lock: asyncio.Lock,
+        ) -> List[str]:
+        """Load model.
+
+        Args:
+            model_id (str): Hugging Face model ID.
+        """
+        prediction = (
+            await asyncio.gather(
+                *[
+                    worker.predict.remote(
+                        prompts,
+                        generate,
+                        timeout_s=timeout_s,
+                        start_timestamp=start_timestamp,
+                        lock=lock
+                    )
+
+                    for worker in self.base_worker_group
+                ]
+            )
+        )[0]
+
+        return prediction
+
+    async def stream(
+        self,
+        prompts: List[Prompt],
+        generate: dict[str, str] = {},
+        *,
+        timeout_s: float = 60,
+        start_timestamp: Optional[float] = None,
+        lock: asyncio.Lock,
+    ) -> Iterator[List[Response]]:
+        async with lock:
+
+            tasks = [
+                worker.stream.remote(
+                    prompts,
+                    generate,
+                    timeout_s=timeout_s,
+                    start_timestamp=start_timestamp,
+                    lock=lock,
+                )
+                for worker in self.base_worker_group
+            ]
+            async for result in tasks[0]:
+                yield await result
