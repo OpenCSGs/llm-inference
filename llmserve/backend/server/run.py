@@ -5,7 +5,8 @@ import ray._private.usage.usage_lib
 from ray import serve
 import json
 
-from llmserve.backend.server.app import LLMDeployment, RouterDeployment, ExperimentalDeployment, ApiServer
+from llmserve.backend.server.app import LLMDeployment, RouterDeployment, ExperimentalDeployment
+from llmserve.backend.server.apiserver import ApiServer
 # from llmserve.backend.server.app import ApplicationDeployment
 from llmserve.backend.server.config import SERVE_RUN_HOST
 from llmserve.backend.server.models import LLMApp, ServeArgs
