@@ -70,7 +70,7 @@ class GPT:
             "Authorization": f"Bearer {self.__api_key}",
         }
         resp = requests.post(
-            url="https://api.openai.com/v1/chat/completions", json=data, headers=headers
+            url="https://api.openai.com/v1/chat/completions", json=data, headers=headers, timeout=30
         )
 
         if not resp.ok:
